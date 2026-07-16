@@ -1,0 +1,86 @@
+[
+  {
+    "method": "GET",
+    "path": "/login",
+    "scenario": "Verify that the login page is accessible to unauthenticated users.",
+    "assertions": "Assert 200 OK status code. Assert content type is HTML.",
+    "source": "AuthController"
+  },
+  {
+    "method": "GET",
+    "path": "/register",
+    "scenario": "Verify that the registration page is accessible to unauthenticated users.",
+    "assertions": "Assert 200 OK status code. Assert content type is HTML.",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Verify successful user registration with valid credentials.",
+    "assertions": "Assert 302 Found status code. Assert 'Location' header is '/login'. Assert success flash attribute is set (implicitly via redirect).",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Verify user registration fails with an existing username.",
+    "assertions": "Assert 302 Found status code. Assert 'Location' header is '/register'. Assert error flash attribute is set (implicitly via redirect) with a message indicating the username already exists.",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Verify user registration fails with a missing username parameter.",
+    "assertions": "Assert 400 Bad Request status code (due to @RequestParam).",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Verify user registration fails with a missing password parameter.",
+    "assertions": "Assert 400 Bad Request status code (due to @RequestParam).",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Verify user registration fails with empty username and password.",
+    "assertions": "Assert 302 Found status code. Assert 'Location' header is '/register'. Assert error flash attribute is set (implicitly via redirect) with an appropriate validation message (assuming UserService handles this).",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Security: Attempt to register with potential SQL injection in username.",
+    "assertions": "Assert 302 Found status code. Assert 'Location' header is '/register' or '/login' based on UserService behavior. Verify no unexpected server errors or data corruption.",
+    "source": "AuthController"
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "scenario": "Security: Attempt to register with potential XSS in username.",
+    "assertions": "Assert 302 Found status code. Assert 'Location' header is '/register' or '/login'. Verify the input is sanitized or rejected, and no script execution occurs on subsequent page loads.",
+    "source": "AuthController"
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "scenario": "Verify access to the home page for an unauthenticated user.",
+    "assertions": "Assert 200 OK status code. Assert content type is HTML. Verify no username is displayed.",
+    "source": "HomeController"
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "scenario": "Verify access to the home page for an authenticated user.",
+    "assertions": "Assert 200 OK status code. Assert content type is HTML. Verify the authenticated username is displayed in the response.",
+    "source": "HomeController"
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "scenario": "Security: Verify home page access with an invalid or expired authentication token.",
+    "assertions": "Assert 302 Found status code (redirect to login) or 401 Unauthorized/403 Forbidden, depending on Spring Security configuration. If redirected, assert 'Location' header points to login.",
+    "source": "HomeController"
+  }
+]

@@ -201,6 +201,8 @@ class AnalysisService:
                 f"- Spring Boot Version: {framework_versions.get('Spring Boot', 'Not detected')}\n"
                 f"- Current Java Version: {current_java_version}\n"
                 f"- Planned Migration Target: {recommendation}\n"
+                f"- Total Test Cases Discovered: {project_info.get('test_cases_count', 0)}\n"
+                f"- Testing Types Detected: {', '.join(project_info.get('testing_types', [])) if project_info.get('testing_types') else 'None'}\n"
             )
 
             from app.brd_models import FullBrdReport
@@ -307,6 +309,10 @@ class AnalysisService:
                 hasFrontend=project_info.get("has_frontend", False),
                 frontendFramework=project_info.get("frontend_framework"),
                 endpointCount=project_info.get("endpoint_count", 0),
+                testCasesCount=project_info.get("test_cases_count", 0),
+                testCasesPassed=project_info.get("test_cases_passed", 0),
+                testCasesFailed=project_info.get("test_cases_failed", 0),
+                testingTypes=project_info.get("testing_types", []),
                 riskLevel=risk_level,
                 deprecatedApis=deprecated_apis,
                 dependencies=dependencies,
@@ -648,6 +654,10 @@ class AnalysisService:
             "has_frontend": False,
             "frontend_framework": None,
             "endpoint_count": 0,
+            "test_cases_count": 0,
+            "test_cases_passed": 0,
+            "test_cases_failed": 0,
+            "testing_types": set(),
         }
 
         if (build_dir / "pom.xml").exists():
@@ -770,10 +780,13 @@ class AnalysisService:
                     break
 
         endpoint_count = 0
+        test_cases_count = 0
         mapping_pattern = re.compile(
             r'@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping|app\.get|app\.post|router\.get|router\.post|@app\.get|@app\.post|@router\.get)',
             re.IGNORECASE
         )
+        test_pattern = re.compile(r'(@Test\b|def test_|it\(|test\(|@ParameterizedTest)', re.IGNORECASE)
+        
         for src_file in build_dir.rglob("*.*"):
             if src_file.suffix not in {".java", ".py", ".ts", ".js"}:
                 continue
@@ -782,9 +795,65 @@ class AnalysisService:
             try:
                 content = src_file.read_text(encoding="utf-8", errors="ignore")
                 endpoint_count += len(mapping_pattern.findall(content))
+                
+                # Check for tests
+                is_test_file = False
+                if "test" in src_file.name.lower() or "spec" in src_file.name.lower():
+                    is_test_file = True
+                
+                matches = len(test_pattern.findall(content))
+                if matches > 0:
+                    test_cases_count += matches
+                    is_test_file = True
+                    
+                if is_test_file:
+                    if "selenium" in content.lower():
+                        info["testing_types"].add("UI Automation (Selenium)")
+                    if "playwright" in content.lower():
+                        info["testing_types"].add("UI Automation (Playwright)")
+                    if "cypress" in content.lower():
+                        info["testing_types"].add("UI Automation (Cypress)")
+                    if "mockito" in content.lower() or "mock(" in content:
+                        info["testing_types"].add("Mocking / Unit Testing")
+                    if "restassured" in content.lower() or "mockmvc" in content.lower():
+                        info["testing_types"].add("API / Integration Testing")
+                    if "junit" in content.lower() or "testng" in content.lower() or "pytest" in content.lower() or "jest" in content.lower():
+                        info["testing_types"].add("Unit Testing")
             except Exception:
                 pass
+        
+        if not info["testing_types"] and test_cases_count > 0:
+            info["testing_types"].add("Unit Testing")
+
         info["endpoint_count"] = endpoint_count
+        info["test_cases_count"] = test_cases_count
+        info["testing_types"] = list(info["testing_types"])
+        
+        # Try to parse test reports for pass/fail (Maven/Gradle)
+        passed = 0
+        failed = 0
+        for report in build_dir.rglob("TEST-*.xml"):
+            if any(p in report.parts for p in ("node_modules", ".git")): continue
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(report)
+                root = tree.getroot()
+                if root.tag == "testsuite":
+                    tests = int(root.attrib.get("tests", 0))
+                    failures = int(root.attrib.get("failures", 0))
+                    errors = int(root.attrib.get("errors", 0))
+                    skipped = int(root.attrib.get("skipped", 0))
+                    failed += (failures + errors)
+                    passed += (tests - failures - errors - skipped)
+            except Exception:
+                pass
+                
+        if passed > 0 or failed > 0:
+            info["test_cases_passed"] = passed
+            info["test_cases_failed"] = failed
+            # If we found reports but test_cases_count from source is smaller, use the report count
+            if (passed + failed) > info["test_cases_count"]:
+                info["test_cases_count"] = passed + failed
 
         return info
 

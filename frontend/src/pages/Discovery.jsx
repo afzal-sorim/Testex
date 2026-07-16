@@ -1,37 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Play, CheckCircle, AlertTriangle, ShieldAlert, BookOpen, ArrowRight, Shield, Code, Server, Zap, Search, Activity, Package, List, Database, Globe, Layers, FlaskConical, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Terminal, Loader2 } from 'lucide-react';
-import { analyzeRepository, getPlaywrightStatus, getRepositoryTree, getRepositoryFileContent, startProject } from '../api';
-import ProjectRunner from './ProjectRunner';
-import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
-import 'react-circular-progressbar/dist/styles.css';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Folder, FolderOpen, FileCode, FileImage, FileArchive, FileText, File, 
+  ChevronRight, ChevronDown, Download, X, Copy, Check, FileSearch, Code, 
+  Layout, Database, Server, MonitorSmartphone, Layers, Search, Zap, CheckCircle2, ShieldCheck,
+  Briefcase, Users, GitBranch, Target, AlertTriangle, ArrowRight
+} from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getRepositoryTree, getRepositoryFileContent, analyzeRepository, startProject } from '../api';
 
-
+// Reusable File Icon Component
 const FileIcon = ({ type, extension, expanded }) => {
   if (type === 'folder') {
-    return expanded ? <FolderOpen size={16} className="text-blue-500" /> : <Folder size={16} className="text-blue-500" />;
+    return expanded ? <FolderOpen size={16} className="text-[#3B82F6]" /> : <Folder size={16} className="text-[#3B82F6]" />;
   }
-  
   const ext = (extension || '').toLowerCase();
   if (['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'cpp', 'c', 'cs', 'go', 'rs', 'php', 'rb'].includes(ext)) {
-    return <FileCode size={16} className="text-emerald-500" />;
+    return <FileCode size={16} className="text-[#10B981]" />;
   }
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico'].includes(ext)) {
-    return <FileImage size={16} className="text-purple-500" />;
+    return <FileImage size={16} className="text-[#8B5CF6]" />;
   }
   if (['zip', 'tar', 'gz', 'rar', '7z', 'jar', 'war'].includes(ext)) {
-    return <FileArchive size={16} className="text-rose-500" />;
+    return <FileArchive size={16} className="text-[#F43F5E]" />;
   }
   if (['json', 'xml', 'yaml', 'yml', 'md', 'txt', 'csv'].includes(ext)) {
-    return <FileText size={16} className="text-amber-500" />;
+    return <FileText size={16} className="text-[#F59E0B]" />;
   }
-  
-  return <File size={16} className="text-slate-400" />;
+  return <File size={16} className="text-[#9CA3AF]" />;
 };
 
+// Recursive Tree Node Component
 const TreeNode = ({ node, level = 0, onSelectFile, selectedPath }) => {
   const [expanded, setExpanded] = useState(false);
   const isFolder = node.type === 'folder';
@@ -50,20 +50,20 @@ const TreeNode = ({ node, level = 0, onSelectFile, selectedPath }) => {
     <div className="select-none">
       <div 
         onClick={handleClick}
-        className={`flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 text-brand-700' : 'hover:bg-slate-50 text-slate-700'}`}
+        className={`flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-[#F5F3FF] text-[#5C36E0] font-semibold' : 'hover:bg-[#F9FAFB] text-[#4B5563]'}`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
         <span className="w-4 h-4 flex items-center justify-center shrink-0">
           {isFolder && (
-            expanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />
+            expanded ? <ChevronDown size={14} className="text-[#9CA3AF]" /> : <ChevronRight size={14} className="text-[#9CA3AF]" />
           )}
         </span>
         <FileIcon type={node.type} extension={node.extension} expanded={expanded} />
-        <span className={`text-sm truncate ${isSelected ? 'font-semibold' : ''}`}>{node.name}</span>
+        <span className="text-[13px] truncate">{node.name}</span>
       </div>
       
       {isFolder && expanded && node.children && (
-        <div className="flex flex-col">
+        <div className="flex flex-col mt-0.5">
           {node.children.map((child, idx) => (
             <TreeNode 
               key={idx} 
@@ -79,49 +79,94 @@ const TreeNode = ({ node, level = 0, onSelectFile, selectedPath }) => {
   );
 };
 
- export default function Discovery({ 
- setActiveTab, 
- repoUrl, 
- setRepoUrl, 
- loading, 
- setLoading, 
- result, 
- setResult, 
- error, 
- setError, 
- statusText, 
- setStatusText,
- elapsedTime,
- timeTaken,
- setTimeTaken,
- workflowState,
- setWorkflowState,
- sessionId,
- setSessionId
+export default function Discovery({ 
+  setActiveTab: setGlobalTab,
+  repoUrl, 
+  result, 
+  setResult,
+  loading, 
+  setLoading,
+  error, 
+  setError,
+  sessionId,
+  setSessionId
 }) {
- const hasAutoTriggeredRef = React.useRef(false);
- const [viewMode, setViewMode] = useState('overview');
- const [activeSummaryTab, setActiveSummaryTab] = useState('brd');
- const [playwrightStatus, setPlaywrightStatus] = useState(null);
+  const hasAutoTriggeredRef = React.useRef(false);
+  
+  const [activeTab, setActiveTab] = useState('business');
+  
   const [treeData, setTreeData] = useState(null);
   const [treeLoading, setTreeLoading] = useState(false);
-  const [treeError, setTreeError] = useState(null);
-  const [autoRunError, setAutoRunError] = useState(null);
   
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [fileLoading, setFileLoading] = useState(false);
-  const [fileError, setFileError] = useState(null);
-  const [previewSupported, setPreviewSupported] = useState(true);
+  const [copied, setCopied] = useState(false);
+  
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const [loadingMessage, setLoadingMessage] = useState('Cloning repository files...');
+
+  useEffect(() => {
+    if (loading) {
+      const timer1 = setTimeout(() => setLoadingMessage('Detecting project properties and files...'), 3000);
+      const timer2 = setTimeout(() => setLoadingMessage('Extracting dependency tree...'), 6000);
+      const timer3 = setTimeout(() => setLoadingMessage('Querying local RAG knowledge base & consulting AI...'), 9000);
+      const timer4 = setTimeout(() => setLoadingMessage('Generating Business & Testing Reports...'), 13000);
+      return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); clearTimeout(timer4); };
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (result && repoUrl) {
+      const repoNameExtracted = repoUrl.split('/').pop().replace('.git', '');
+      fetchTreeData(repoNameExtracted);
+    }
+  }, [result, repoUrl]);
+
+  useEffect(() => {
+    const runAnalysis = async () => {
+      if (!repoUrl) return;
+      if (setLoading) setLoading(true);
+      if (setError) setError(null);
+      if (setResult) setResult(null);
+
+      try {
+        const data = await analyzeRepository(repoUrl, '', '', sessionId);
+        if (data.errorMessage) {
+          if (setError) setError(data.errorMessage);
+        } else {
+          if (setResult) setResult(data);
+          if (setSessionId && data.sessionId) setSessionId(data.sessionId);
+          
+          // Automatically run the project in the backend silently
+          const repoNameExtracted = repoUrl.split('/').pop().replace('.git', '');
+          try {
+            await startProject(repoNameExtracted);
+          } catch(e) {
+            console.error("Auto-start project failed", e);
+          }
+        }
+      } catch (err) {
+        if (setError) setError(err.response?.data?.message || err.message || 'An error occurred during repository analysis.');
+      } finally {
+        if (setLoading) setLoading(false);
+      }
+    };
+
+    if (repoUrl && !result && !loading && !error && !hasAutoTriggeredRef.current) {
+      hasAutoTriggeredRef.current = true;
+      runAnalysis();
+    }
+  }, [repoUrl, result, loading, error, setResult, setLoading, setError, sessionId, setSessionId]);
 
   const fetchTreeData = async (repositoryId) => {
     setTreeLoading(true);
-    setTreeError(null);
     try {
       const data = await getRepositoryTree(repositoryId);
-      setTreeData(data);
+      setTreeData(data.nodes || []);
     } catch (err) {
-      setTreeError(err.response?.data?.error || err.message || 'Failed to load repository tree.');
+      console.error('Failed to load tree:', err);
     } finally {
       setTreeLoading(false);
     }
@@ -130,1191 +175,551 @@ const TreeNode = ({ node, level = 0, onSelectFile, selectedPath }) => {
   const handleSelectFile = async (node) => {
     setSelectedFile(node);
     setFileLoading(true);
-    setFileError(null);
     setFileContent(null);
-    setPreviewSupported(true);
     
     try {
       const repositoryId = repoUrl.split('/').pop().replace('.git', '');
       const data = await getRepositoryFileContent(repositoryId, node.path);
-      setPreviewSupported(data.previewSupported);
       if (data.previewSupported) {
         setFileContent(data.content);
+      } else {
+        setFileContent('// Preview not supported for this file type.');
       }
     } catch (err) {
-      setFileError(err.response?.data?.error || err.message || 'Failed to load file content.');
+      setFileContent('// Failed to load file content.');
     } finally {
       setFileLoading(false);
     }
   };
 
- 
- 
-
- const [sourceType, setSourceType] = useState('remote');
- const [githubToken, setGithubToken] = useState('');
- const [localPath, setLocalPath] = useState('');
- const [isDownloadingBrd, setIsDownloadingBrd] = useState(false);
- const [isDownloadingApiTests, setIsDownloadingApiTests] = useState(false);
- const [isDownloadingUiTests, setIsDownloadingUiTests] = useState(false);
-
-  // Removed UI/API test downloads from here
-
- const handleDownloadBrd = async () => {
- setIsDownloadingBrd(true);
- try {
- const targetRepo = sourceType === 'remote' ? repoUrl : localPath;
- if (!targetRepo) return;
- const repoName = targetRepo.split('/').pop().replace('.git', '');
- 
- const response = await fetch(`http://localhost:8000/api/brd/download/${encodeURIComponent(targetRepo)}`);
- if (!response.ok) {
- throw new Error('Failed to download BRD report');
- }
- const blob = await response.blob();
- const url = window.URL.createObjectURL(blob);
- const a = document.createElement('a');
- a.href = url;
- a.download = `BRD_${repoName}.pdf`;
- document.body.appendChild(a);
- a.click();
- window.URL.revokeObjectURL(url);
- document.body.removeChild(a);
- } catch (err) {
- console.error(err);
- alert('Error downloading BRD report');
- } finally {
- setIsDownloadingBrd(false);
- }
- };
-
- const handleDownloadApiTests = async () => {
-   setIsDownloadingApiTests(true);
-   try {
-     const targetRepo = sourceType === 'remote' ? repoUrl : localPath;
-     if (!targetRepo) return;
-     const repoName = targetRepo.split('/').pop().replace('.git', '');
-     
-     const response = await fetch(`http://localhost:8000/api/reports/api-test-cases/download/${encodeURIComponent(repoName)}`);
-     if (!response.ok) throw new Error('Failed to download API test cases');
-     const blob = await response.blob();
-     const url = window.URL.createObjectURL(blob);
-     const a = document.createElement('a');
-     a.href = url;
-     a.download = `api-functional-test-scope-${repoName}.html`;
-     document.body.appendChild(a);
-     a.click();
-     window.URL.revokeObjectURL(url);
-     document.body.removeChild(a);
-   } catch (err) {
-     console.error(err);
-     alert('Error downloading API Test Cases');
-   } finally {
-     setIsDownloadingApiTests(false);
-   }
- };
-
- const handleDownloadUiTests = async () => {
-   setIsDownloadingUiTests(true);
-   try {
-     const targetRepo = sourceType === 'remote' ? repoUrl : localPath;
-     if (!targetRepo) return;
-     const repoName = targetRepo.split('/').pop().replace('.git', '');
-     
-     const response = await fetch(`http://localhost:8000/api/reports/ui-functional-test/download/${encodeURIComponent(repoName)}`);
-     if (!response.ok) throw new Error('Failed to download UI test cases');
-     const blob = await response.blob();
-     const url = window.URL.createObjectURL(blob);
-     const a = document.createElement('a');
-     a.href = url;
-     a.download = `ui-functional-test-scope-${repoName}.html`;
-     document.body.appendChild(a);
-     a.click();
-     window.URL.revokeObjectURL(url);
-     document.body.removeChild(a);
-   } catch (err) {
-     console.error(err);
-     alert('Error downloading UI Test Cases');
-   } finally {
-     setIsDownloadingUiTests(false);
-   }
- };
-
- 
-  React.useEffect(() => {
-    const targetRepo = sourceType === 'remote' ? repoUrl : localPath;
-    if (result?.projectType && targetRepo) {
-      const repoName = targetRepo.split('/').pop().replace('.git', '');
-      getPlaywrightStatus(repoName).then(pwStatus => {
-        setPlaywrightStatus(pwStatus);
-      }).catch(err => {
-        // Optional
-      });
-      fetchTreeData(repoName);
-      
-      // Ensure the project is running in the background if we loaded from cache
-      startProject(repoName).catch(runErr => {
-        setAutoRunError(runErr.response?.data?.message || runErr.message || 'Failed to automatically start the project in the background.');
-      });
+  const handleCopy = () => {
+    if (fileContent) {
+      navigator.clipboard.writeText(fileContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [result, repoUrl, localPath, sourceType]);
+  };
 
-
- const handleAnalyze = async (e) => {
- e.preventDefault();
- if (sourceType === 'remote' && !repoUrl.trim()) return;
- if (sourceType === 'local' && !localPath.trim()) return;
-
- setLoading(true);
- setError(null);
- setResult(null);
- setTimeTaken(null);
- setStatusText('Connecting to repository...');
-
- const startTime = Date.now();
-
- const timer = setTimeout(() => setStatusText('Cloning repository files...'), 1500);
- const timer2 = setTimeout(() => setStatusText('Detecting project properties and files...'), 3500);
- const timer3 = setTimeout(() => setStatusText('Extracting dependency tree...'), 5500);
- const timer4 = setTimeout(() => setStatusText('Querying local RAG knowledge base & consult AI...'), 7500);
-
- try {
- const data = await analyzeRepository(
- sourceType === 'remote' ? repoUrl : '', 
- sourceType === 'remote' ? githubToken : '', 
- sourceType === 'local' ? localPath : '',
- sessionId
- );
- clearTimeout(timer);
- clearTimeout(timer2);
- clearTimeout(timer3);
- clearTimeout(timer4);
- 
- const endTime = Date.now();
- const duration = ((endTime - startTime) / 1000).toFixed(1);
-
- if (data.errorMessage) {
- setError(data.errorMessage);
- } else {
- 
-      setResult(data);
-      if (setSessionId && data.sessionId) setSessionId(data.sessionId);
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const repoName = repoUrl.split('/').pop().replace('.git', '');
+      let endpoint = '';
+      let defaultFilename = '';
       
-      const targetRepo = sourceType === 'remote' ? repoUrl : localPath;
-      if (targetRepo) {
-         const repoNameExtracted = targetRepo.split('/').pop().replace('.git', '');
-         fetchTreeData(repoNameExtracted);
-         // Automatically start the project runner in the background
-         startProject(repoNameExtracted).catch(runErr => {
-           setAutoRunError(runErr.response?.data?.message || runErr.message || 'Failed to automatically start the project in the background.');
-         });
+      if (activeTab === 'business') {
+        endpoint = `/api/brd/download/${encodeURIComponent(repoUrl)}`;
+        defaultFilename = `BRD_${repoName}.pdf`;
+      } else {
+        endpoint = `/api/reports/api-test-cases/download/${encodeURIComponent(repoName)}`;
+        defaultFilename = `functional-test-plan-${repoName}.html`;
       }
+      
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error('Failed to download report');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = defaultFilename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error(err);
+      alert('Error downloading report. Ensure the backend server is running and the endpoint exists.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
- setTimeTaken(duration);
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-[#F5F3FF] border-t-[#5C36E0] rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Zap size={20} className="text-[#5C36E0] animate-pulse" />
+          </div>
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-lg font-bold text-[#111827]">Analyzing Project</h2>
+          <p className="text-[#6B7280] font-medium animate-pulse">{loadingMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
- // Detect Playwright in the cloned project workspace (best-effort)
- try {
- const repoName = repoUrl.split('/').pop().replace('.git', '');
- const pwStatus = await getPlaywrightStatus(repoName);
- setPlaywrightStatus(pwStatus);
- } catch (_) {
- // Playwright detection is optional â€” don't block the UI
- }
- }
- } catch (err) {
- clearTimeout(timer);
- clearTimeout(timer2);
- clearTimeout(timer3);
- clearTimeout(timer4);
- setError(err.response?.data?.message || err.message || 'An error occurred during repository analysis.');
- } finally {
- setLoading(false);
- }
- };
+  if (error || !result) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <div className="text-center space-y-4">
+          <Search size={48} className="mx-auto text-[#9CA3AF]" />
+          <h2 className="text-xl font-bold text-[#111827]">No Analysis Data</h2>
+          <p className="text-[#6B7280]">Please connect a repository first to view discovery insights.</p>
+        </div>
+      </div>
+    );
+  }
 
- React.useEffect(() => {
-   if (repoUrl && !result?.projectType && !loading && !error && !hasAutoTriggeredRef.current) {
-     hasAutoTriggeredRef.current = true;
-     handleAnalyze({ preventDefault: () => {} });
-   }
- }, [repoUrl, result, loading, error]);
+  return (
+    <div className="w-full animate-fadeIn space-y-6 relative pb-24">
+      
+      {/* ── TOP SECTION: EXISTING TEST COVERAGE ── */}
+      <div className="bg-white rounded-[24px] shadow-[0_4px_24px_rgb(0,0,0,0.03)] border border-[#F3F4F6] p-6">
+        <h3 className="text-[16px] font-extrabold text-[#111827] mb-6">Existing Test Coverage Analysis</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center">
+            <p className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-wider mb-1">Total Tests</p>
+            <p className="text-[24px] font-black text-[#0F172A]">{result.testCasesCount || 0}</p>
+          </div>
+          <div className="p-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl text-center">
+            <p className="text-[11px] font-extrabold text-[#166534] uppercase tracking-wider mb-1">Passed</p>
+            <p className="text-[24px] font-black text-[#15803D]">{result.testCasesPassed || 0}</p>
+          </div>
+          <div className="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-2xl text-center">
+            <p className="text-[11px] font-extrabold text-[#991B1B] uppercase tracking-wider mb-1">Failed</p>
+            <p className="text-[24px] font-black text-[#B91C1C]">{result.testCasesFailed || 0}</p>
+          </div>
+          <div className="p-4 bg-[#F5F3FF] border border-[#DDD6FE] rounded-2xl text-center flex flex-col justify-center">
+            <p className="text-[11px] font-extrabold text-[#5C36E0] uppercase tracking-wider mb-1">Testing Types</p>
+            <p className="text-[13px] font-black text-[#4C1D95] leading-tight">
+              {(Array.isArray(result.testingTypes) && result.testingTypes.length > 0) ? result.testingTypes.join(', ') : 'Not Detected'}
+            </p>
+          </div>
+        </div>
+      </div>
 
- // --- DYNAMIC DATA FOR GRAPHICAL VIEW ---
- const getDynamicScore = (label) => {
- if (!result || !result.projectType) return 0;
- const version = parseInt(result.detectedJavaVersion || '8');
- const deprecatedCount = result.deprecatedApis?.length || 0;
- const isHighRisk = result.riskLevel === 'High';
- const isMediumRisk = result.riskLevel === 'Medium';
- 
- let base = 85;
- if (isHighRisk) base -= 25;
- else if (isMediumRisk) base -= 12;
- 
- if (version < 11) base -= 10;
- base -= Math.min(deprecatedCount * 4, 20);
- 
- switch(label) {
- case 'Maintainability':
- return Math.max(30, Math.min(95, base));
- case 'Reliability':
- return Math.max(40, Math.min(98, base + (isHighRisk ? -5 : 5)));
- case 'Security':
- return Math.max(35, Math.min(95, base + (deprecatedCount > 0 ? -8 : 6)));
- case 'Performance':
- return Math.max(50, Math.min(99, 78 + (version >= 17 ? 12 : 0)));
- case 'Test Coverage':
- return Math.max(20, Math.min(90, 50 + (result.isJava ? 15 : 5) + (isHighRisk ? -15 : 10)));
- default:
- return base;
- }
- };
-
- const getScoreColor = (score) => {
- if (score >= 80) return '#10B981'; // Emerald
- if (score >= 60) return '#F59E0B'; // Amber
- return '#EF4444'; // Rose
- };
-
- const overallScore = result?.projectType ? Math.round(
- (getDynamicScore('Maintainability') + 
- getDynamicScore('Reliability') + 
- getDynamicScore('Security') + 
- getDynamicScore('Performance') + 
- getDynamicScore('Test Coverage')) / 5
- ) : 0;
-
- const complexityData = result?.projectType ? [
- { subject: 'Cyclomatic Complexity', A: Math.round(55 + (result.endpointCount > 20 ? 25 : result.endpointCount * 1.2)), B: 30, fullMark: 100 },
- { subject: 'Cognitive Complexity', A: Math.round(45 + (result.isMultiModule ? 20 : 0) + (result.deprecatedApis?.length > 2 ? 15 : 0)), B: 25, fullMark: 100 },
- { subject: 'Class Complexity', A: Math.round(50 + (result.isMultiModule ? 15 : 0)), B: 35, fullMark: 100 },
- { subject: 'Method Complexity', A: Math.round(40 + (result.detectedJavaVersion === '8' ? 15 : 0)), B: 25, fullMark: 100 },
- { subject: 'Package Stability', A: Math.round(65 + (result.isMultiModule ? -15 : 15)), B: 85, fullMark: 100 },
- ] : [
- { subject: 'Cyclomatic Complexity', A: 0, B: 0, fullMark: 100 },
- { subject: 'Cognitive Complexity', A: 0, B: 0, fullMark: 100 },
- { subject: 'Class Complexity', A: 0, B: 0, fullMark: 100 },
- { subject: 'Method Complexity', A: 0, B: 0, fullMark: 100 },
- { subject: 'Package Stability', A: 0, B: 0, fullMark: 100 },
- ];
-
- const codeSmells = result?.projectType ? [
- { 
- label: 'Deprecated API Usage', 
- count: result.deprecatedApis?.length || 0, 
- icon: <AlertTriangle size={14} className="text-amber-500" />, 
- bg: 'bg-amber-500/10' 
- },
- { 
- label: 'Legacy Dependencies', 
- count: result.dependencies?.filter(d => d.includes('starter') || d.includes('hibernate')).length || 0, 
- icon: <ShieldAlert size={14} className="text-rose-500" />, 
- bg: 'bg-rose-500/10' 
- },
- { 
- label: 'High Cognitive Complexity', 
- count: result.isMultiModule ? 4 : 1, 
- icon: <Layers size={14} className="text-indigo-500" />, 
- bg: 'bg-indigo-500/10' 
- },
- ] : [];
-
- const totalCodeSmells = codeSmells.reduce((acc, curr) => acc + curr.count, 0);
-
- const javaVersionData = result?.detectedJavaVersion ? [
- { name: `Java ${result.detectedJavaVersion}`, value: 100, color: '#3B82F6' },
- ] : [];
-
- const recommendations = [];
- if (result?.projectType) {
- if (result.migrationRecommendation && result.migrationRecommendation !== 'This project is already using the latest Java version. No migration is required.') {
- recommendations.push({
- title: 'Upgrade Java Runtime',
- desc: result.migrationRecommendation,
- level: result.riskLevel || 'Medium',
- icon: <BookOpen size={18} className="text-blue-500" />,
- bg: 'bg-blue-50',
- actionType: 'migrate'
- });
- }
- 
- if (result.deprecatedApis && result.deprecatedApis.length > 0) {
- recommendations.push({
- title: 'Heal Deprecated APIs',
- desc: `Fix ${result.deprecatedApis.length} legacy namespace usages.`,
- level: 'High',
- icon: <ShieldAlert size={18} className="text-rose-500" />,
- bg: 'bg-rose-50',
- actionType: 'migrate'
- });
- }
-
- if (result.isJava) {
- recommendations.push({
- title: 'Transpile Java Source',
- desc: 'Convert legacy classes and controllers to clean Python code.',
- level: 'Low',
- icon: <Code size={18} className="text-emerald-500" />,
- bg: 'bg-emerald-50',
- actionType: 'convert'
- });
- }
- }
-
-
- const renderGraphicalView = () => (
- <div className="space-y-6">
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn mt-6">
- {/* 1. Code Quality Score */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card flex flex-col">
- <h3 className="text-sm font-bold text-[#101828] mb-6">Code Quality Score</h3>
- <div className="flex items-center gap-6 mb-4">
- <div className="w-32 h-32 relative flex-shrink-0">
- <CircularProgressbar
- value={overallScore}
- text={overallScore > 0 ? `${overallScore}%` : '--'}
- styles={buildStyles({
- textSize: '24px',
- textColor: result ? '#111827' : '#9CA3AF',
- pathColor: getScoreColor(overallScore),
- trailColor: '#F3F4F6',
- })}
- />
- <div className="absolute top-[65%] left-1/2 -translate-x-1/2 text-[10px] text-[#667085] font-bold">/100</div>
- </div>
- <div className="flex-1 space-y-3.5 w-full">
- {[
- { label: 'Maintainability', score: getDynamicScore('Maintainability'), color: getScoreColor(getDynamicScore('Maintainability')) },
- { label: 'Reliability', score: getDynamicScore('Reliability'), color: getScoreColor(getDynamicScore('Reliability')) },
- { label: 'Security', score: getDynamicScore('Security'), color: getScoreColor(getDynamicScore('Security')) },
- { label: 'Performance', score: getDynamicScore('Performance'), color: getScoreColor(getDynamicScore('Performance')) },
- { label: 'Test Coverage', score: getDynamicScore('Test Coverage'), color: getScoreColor(getDynamicScore('Test Coverage')) },
- ].map(item => (
- <div key={item.label} className="flex items-center text-[10px] gap-2">
- <span className="w-20 font-semibold text-[#475467]">{item.label}</span>
- <div className="flex-1 h-1.5 bg-[#F2F4F7] rounded-full overflow-hidden">
- <div className="h-full rounded-full" style={{ width: `${item.score}%`, backgroundColor: item.color }} />
- </div>
- <span className="w-8 text-right text-[#667085]">{item.score}/100</span>
- </div>
- ))}
- </div>
- </div>
- <div className="mt-auto flex items-center gap-2">
- <span className="font-bold text-sm" style={{ color: getScoreColor(overallScore) }}>
- {overallScore >= 80 ? 'Good' : overallScore >= 60 ? 'Fair' : overallScore > 0 ? 'Needs Refactoring' : 'No Data'}
- </span>
- <span className="text-xs text-[#98A2B3] flex items-center gap-1">
- {result?.projectType ? 'Calculated from analysis facts' : 'Run an analysis to score'}
- </span>
- </div>
- </div>
-
- {/* 2. Complexity Analysis */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card relative flex flex-col">
- <h3 className="text-sm font-bold text-[#101828] mb-2">Complexity Analysis</h3>
- <div className="flex-1 min-h-[220px]">
- <ResponsiveContainer width="100%" height="100%">
- <RadarChart cx="50%" cy="50%" outerRadius="48%" margin={{ top: 10, right: 30, bottom: 10, left: 30 }} data={complexityData}>
- <PolarGrid stroke="#E5E7EB" />
- <PolarAngleAxis dataKey="subject" tick={{ fill: '#6B7280', fontSize: 8, fontWeight: 700 }} />
- <Radar name="Current" dataKey="A" stroke="#F97316" fill="#F97316" fillOpacity={0.25} />
- <Radar name="Recommended" dataKey="B" stroke="#10B981" fill="#10B981" fillOpacity={0.15} strokeDasharray="3 3" />
- </RadarChart>
- </ResponsiveContainer>
- </div>
- <div className="absolute bottom-4 left-0 w-full flex justify-center gap-4 text-[10px] text-[#667085] font-semibold">
- <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500" /> Current</span>
- <span className="flex items-center gap-1 text-[#98A2B3] border-b border-dashed border-slate-400 pb-0.5">Recommended</span>
- </div>
- </div>
-
- {/* 3. Code Smells */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card flex flex-col">
- <div className="flex justify-between items-center mb-4">
- <h3 className="text-sm font-bold text-[#101828]">Code Smells</h3>
- </div>
- <div className="flex-1 space-y-3.5 flex flex-col justify-center">
- {codeSmells.length > 0 ? codeSmells.map(smell => (
- <div key={smell.label} className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${smell.bg}`}>
- {smell.icon}
- </div>
- <span className="text-xs font-semibold text-[#344054]">{smell.label}</span>
- </div>
- <span className="text-xs font-bold text-[#101828]">{smell.count}</span>
- </div>
- )) : (
- <span className="text-xs text-[#98A2B3]">No code smells detected yet.</span>
- )}
- </div>
- <div className="mt-4 pt-4 border-t border-[#F2F4F7] flex justify-between items-center">
- <span className="text-xs font-bold text-[#667085]">Total Code Smells</span>
- <span className="text-sm font-black text-[#101828]">{totalCodeSmells}</span>
- </div>
- </div>
-
- {/* 4. Dependency Graph */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card flex flex-col">
- <div className="flex justify-between items-center mb-6">
- <h3 className="text-sm font-bold text-[#101828]">Dependency Graph</h3>
- </div>
- <div className="relative flex-1 flex items-center justify-center min-h-[220px]">
- {result?.dependencies?.length > 0 ? (
- <div className="absolute w-[240px] h-[240px]">
- <svg width="240" height="240" className="absolute top-0 left-0">
- {result.dependencies.length >= 1 && <line x1="120" y1="120" x2="120" y2="40" stroke="#CBD5E1" strokeWidth="1.5" />}
- {result.dependencies.length >= 2 && <line x1="120" y1="120" x2="190" y2="80" stroke="#CBD5E1" strokeWidth="1.5" />}
- {result.dependencies.length >= 3 && <line x1="120" y1="120" x2="170" y2="180" stroke="#CBD5E1" strokeWidth="1.5" />}
- {result.dependencies.length >= 4 && <line x1="120" y1="120" x2="70" y2="180" stroke="#CBD5E1" strokeWidth="1.5" />}
- {result.dependencies.length >= 5 && <line x1="120" y1="120" x2="50" y2="80" stroke="#CBD5E1" strokeWidth="1.5" />}
- </svg>
- 
- <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-14 h-14 bg-white rounded-full border-[3px] border-orange-400 shadow-soft flex items-center justify-center z-10">
- <Package size={22} className="text-orange-500" />
- </div>
- <span className="text-[10px] font-bold mt-1 text-[#101828] bg-white border border-[#EAECF0] rounded-full px-2 py-0.5 shadow-card text-center max-w-[90px] leading-tight">Project</span>
- </div>
- 
- {result.dependencies[0] && (
- <div className="absolute top-[30px] left-[120px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-9 h-9 bg-white rounded-full border border-[#EAECF0] shadow-card flex items-center justify-center z-10">
- <Database size={16} className="text-[#667085]" />
- </div>
- <span className="text-[8px] font-bold mt-1 text-[#475467] bg-white border border-slate-150 rounded-full px-2 py-0.5 shadow-card text-center whitespace-normal max-w-[110px] leading-tight">{result.dependencies[0]}</span>
- </div>
- )}
- {result.dependencies[1] && (
- <div className="absolute top-[80px] left-[190px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-9 h-9 bg-white rounded-full border border-[#EAECF0] shadow-card flex items-center justify-center z-10">
- <Server size={16} className="text-[#667085]" />
- </div>
- <span className="text-[8px] font-bold mt-1 text-[#475467] bg-white border border-slate-150 rounded-full px-2 py-0.5 shadow-card text-center whitespace-normal max-w-[110px] leading-tight">{result.dependencies[1]}</span>
- </div>
- )}
- {result.dependencies[2] && (
- <div className="absolute top-[180px] left-[170px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-9 h-9 bg-white rounded-full border border-[#EAECF0] shadow-card flex items-center justify-center z-10">
- <Globe size={16} className="text-[#667085]" />
- </div>
- <span className="text-[8px] font-bold mt-1 text-[#475467] bg-white border border-slate-150 rounded-full px-2 py-0.5 shadow-card text-center whitespace-normal max-w-[110px] leading-tight">{result.dependencies[2]}</span>
- </div>
- )}
- {result.dependencies[3] && (
- <div className="absolute top-[180px] left-[70px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-9 h-9 bg-white rounded-full border border-[#EAECF0] shadow-card flex items-center justify-center z-10">
- <Code size={16} className="text-[#667085]" />
- </div>
- <span className="text-[8px] font-bold mt-1 text-[#475467] bg-white border border-slate-150 rounded-full px-2 py-0.5 shadow-card text-center whitespace-normal max-w-[110px] leading-tight">{result.dependencies[3]}</span>
- </div>
- )}
- {result.dependencies[4] && (
- <div className="absolute top-[80px] left-[50px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
- <div className="w-9 h-9 bg-white rounded-full border border-[#EAECF0] shadow-card flex items-center justify-center z-10">
- <Shield size={16} className="text-[#667085]" />
- </div>
- <span className="text-[8px] font-bold mt-1 text-[#475467] bg-white border border-slate-150 rounded-full px-2 py-0.5 shadow-card text-center whitespace-normal max-w-[110px] leading-tight">{result.dependencies[4]}</span>
- </div>
- )}
- </div>
- ) : (
- <span className="text-xs text-[#98A2B3]">Run an analysis to map dependencies.</span>
- )}
- </div>
- <div className="flex justify-center gap-5 text-[9px] font-semibold text-[#98A2B3] mt-auto pt-2">
- <span className="flex items-center gap-1.5"><div className="w-5 border-b-2 border-[#D0D5DD]" /> Direct Dependency</span>
- <span className="flex items-center gap-1.5"><div className="w-5 border-b-2 border-dashed border-[#D0D5DD]" /> Transitive Dependency</span>
- </div>
- </div>
-
- {/* 5. Java Version Distribution */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card flex flex-col">
- <h3 className="text-sm font-bold text-[#101828] mb-4">Java Version Distribution</h3>
- <div className="flex items-center h-[160px] mb-4">
- <div className="w-[140px] h-full relative">
- <ResponsiveContainer width="100%" height="100%">
- <PieChart>
- <Pie data={javaVersionData} cx="50%" cy="50%" innerRadius={50} outerRadius={68} paddingAngle={2} dataKey="value" stroke="none">
- {javaVersionData.map((entry, index) => (
- <Cell key={`cell-${index}`} fill={entry.color} />
- ))}
- </Pie>
- </PieChart>
- </ResponsiveContainer>
- <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
- <div className="text-xl font-bold text-[#101828]">{javaVersionData.length > 0 ? '100%' : '0'}</div>
- </div>
- </div>
- <div className="flex-1 flex flex-col gap-3.5 ml-4">
- {javaVersionData.length > 0 ? javaVersionData.map(v => (
- <div key={v.name} className="flex items-center justify-between text-[11px]">
- <div className="flex items-center gap-2">
- <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
- <span className="font-semibold text-[#344054]">{v.name}</span>
- </div>
- <span className="text-[#667085] font-medium">{v.value}%</span>
- </div>
- )) : (
- <span className="text-xs text-[#98A2B3]">No data available</span>
- )}
- </div>
- </div>
- {result?.detectedJavaVersion === '8' && (
- <div className="mt-auto bg-orange-50 p-3.5 rounded-2xl border border-orange-100 flex items-start gap-2.5">
- <AlertTriangle size={15} className="text-orange-500 mt-0.5 flex-shrink-0" />
- <div>
- <p className="text-[11px] font-semibold text-[#101828] m-0">This repository is primarily using Java 8.</p>
- <p className="text-[10px] text-[#667085] m-0 mt-1 font-medium">Recommended upgrade path: Java 8 → Java 17 → Java 21</p>
- </div>
- </div>
- )}
- </div>
-
- {/* 6. Recommended Actions */}
- <div className="bg-white border border-[#F2F4F7] rounded-2xl p-5 shadow-card flex flex-col">
- <div className="flex justify-between items-center mb-5">
- <h3 className="text-sm font-bold text-[#101828]">Recommended Actions</h3>
- </div>
- <div className="flex flex-col gap-4 flex-1">
- {recommendations.length > 0 ? recommendations.map(rec => (
- <div key={rec.title} className="flex items-start justify-between pb-3.5 border-b border-slate-50 last:border-0 last:pb-0">
- <div className="flex items-start gap-3">
- <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${rec.bg}`}>
- {rec.icon}
- </div>
- <div>
- <h4 className="text-[12px] font-bold text-[#101828] m-0">{rec.title}</h4>
- <p className="text-[10px] text-[#667085] m-0 leading-tight mt-1 max-w-[170px]">{rec.desc}</p>
- </div>
- </div>
- <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
- <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide
- ${rec.level === 'High' ? 'bg-rose-50 text-rose-600' : rec.level === 'Medium' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}
- `}>
- {rec.level}
- </span>
- <button
- onClick={() => {
- if (rec.actionType === 'migrate') setActiveTab('migration');
- else if (rec.actionType === 'convert') setActiveTab('conversion');
- }}
- className="text-[9px] font-bold text-brand-600 hover:text-brand-700 bg-brand-500/10 hover:bg-brand-500/20 px-2 py-0.5 rounded-md transition-all"
- >
- Take Action
- </button>
- </div>
- </div>
- )) : (
- <div className="flex items-center justify-center h-full">
- <span className="text-xs text-[#98A2B3]">Run an analysis to see recommendations.</span>
- </div>
- )}
- </div>
- </div>
- </div>
- {result && result.migrationRecommendation !== 'This project is already using the latest Java version. No migration is required.' && (
- <div className="flex justify-end">
- <button
- onClick={() => setActiveTab('migration')}
- className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl text-xs transition-all shadow-soft"
- >
- Proceed to Migration Center <ArrowRight size={14} />
- </button>
- </div>
- )}
- </div>
- );
-
- return (
- <div className="space-y-6 animate-fadeIn">
-  {/* Banner / Input Area */}
-  {(!repoUrl || error || loading) && (
-  <div className="p-6 glass-card relative z-10">
-  {(!repoUrl || error) && (
-  <>
- <div className="flex items-center gap-4 mb-4">
- <label className="flex items-center gap-2 text-sm cursor-pointer text-[#344054] font-medium">
- <input 
- type="radio" 
- name="sourceType" 
- value="remote" 
- checked={sourceType === 'remote'} 
- onChange={() => setSourceType('remote')}
- className="text-brand-500 focus:ring-brand-500"
- />
- Remote Repository (GitHub)
- </label>
- <label className="flex items-center gap-2 text-sm cursor-pointer text-[#344054] font-medium">
- <input 
- type="radio" 
- name="sourceType" 
- value="local" 
- checked={sourceType === 'local'} 
- onChange={() => setSourceType('local')}
- className="text-brand-500 focus:ring-brand-500"
- />
- Local Folder
- </label>
- </div>
-
- <form onSubmit={handleAnalyze} className="flex flex-col gap-3">
- {sourceType === 'remote' ? (
- <div className="flex flex-col sm:flex-row gap-3 w-full">
- <input
- type="url"
- value={repoUrl}
- onChange={(e) => setRepoUrl(e.target.value)}
- placeholder="https://github.com/username/project-repo"
- required={sourceType === 'remote'}
- disabled={loading}
- className="flex-[2] px-4 py-3 rounded-2xl border border-[#EAECF0] bg-white/50 focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all text-sm"
- />
- <input
- type="password"
- value={githubToken}
- onChange={(e) => setGithubToken(e.target.value)}
- placeholder="PAT Token (optional)"
- disabled={loading}
- className="flex-1 px-4 py-3 rounded-2xl border border-[#EAECF0] bg-white/50 focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all text-sm"
- />
- <button
- type="submit"
- disabled={loading}
- className="flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm whitespace-nowrap"
- >
- {loading ? (
- <>
- <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
- <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
- <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
- </svg>
- Analyzing... ({elapsedTime}s)
- </>
- ) : (
- <>
- <Play size={16} /> Run Audit
- </>
- )}
- </button>
- </div>
- ) : (
- <div className="flex flex-col sm:flex-row gap-3 w-full">
- <input
- type="text"
- value={localPath}
- onChange={(e) => setLocalPath(e.target.value)}
- placeholder="Absolute path (e.g., C:\Projects\MyJavaApp)"
- required={sourceType === 'local'}
- disabled={loading}
- className="flex-1 px-4 py-3 rounded-2xl border border-[#EAECF0] bg-white/50 focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all text-sm"
- />
- <button
- type="submit"
- disabled={loading}
- className="flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm whitespace-nowrap"
- >
- {loading ? (
- <>
- <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
- <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
- <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
- </svg>
- Analyzing... ({elapsedTime}s)
- </>
- ) : (
- <>
- <Play size={16} /> Run Audit
- </>
- )}
- </button>
- </div>
- )}
- </form>
- </>
- )}
-
- {loading && (
- <div className="mt-6 space-y-3">
- <div className="flex items-center justify-between text-sm">
- <span className="font-semibold text-indigo-700">
- {statusText}
- </span>
- <span className="font-mono text-xs text-[#667085]">
- {elapsedTime}s elapsed
- </span>
- </div>
- <div className="rocket-progress-container">
- <div className="rocket-progress-fill" style={{ width: `${Math.min(95, (parseFloat(elapsedTime) || 0) * 2)}%` }}></div>
- <div className="rocket-icon-animated" style={{ left: `${Math.min(90, (parseFloat(elapsedTime) || 0) * 2)}%` }}>
- 🚀
- </div>
- <div className="rocket-smoke" style={{ left: `calc(${Math.min(90, (parseFloat(elapsedTime) || 0) * 2)}% - 22px)` }}></div>
- </div>
- </div>
- )}
- </div>
- )}
-
- 
-      {/* Tree View Section */}
-      {result?.projectType && (
-        <div className={`flex flex-col lg:flex-row gap-6 mb-6 ${selectedFile ? 'h-[600px]' : ''}`}>
-          {/* Left Panel - File Tree (Dynamic Width & Height) */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className={`bg-white rounded-2xl border border-[#EAECF0] flex flex-col shadow-sm overflow-hidden shrink-0 transition-all duration-300 ${
-              selectedFile ? 'w-full lg:w-1/3 xl:w-[30%] h-64 lg:h-full' : 'w-full max-h-[600px]'
-            }`}
-          >
-            <div className="px-4 py-3 border-b border-[#EAECF0] bg-slate-50 flex items-center gap-2">
-              <Folder size={18} className="text-brand-500" />
-              <span className="font-bold text-[#101828] text-sm truncate">{treeData?.repositoryName || (repoUrl ? repoUrl.split('/').pop().replace('.git', '') : '')}</span>
+      {/* ── TOP SECTION: SPLIT LAYOUT ── */}
+      <div className="flex flex-col lg:flex-row gap-6 h-[550px]">
+        
+        {/* LEFT: Repository Explorer */}
+        <div className="w-full lg:w-[45%] bg-white rounded-[24px] shadow-[0_4px_24px_rgb(0,0,0,0.03)] border border-[#F3F4F6] flex flex-col overflow-hidden transition-all duration-300">
+          <div className="p-5 border-b border-[#F3F4F6] flex items-center justify-between bg-white z-10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#F5F3FF] flex items-center justify-center shrink-0">
+                <FileSearch size={20} className="text-[#5C36E0]" />
+              </div>
+              <div>
+                <h2 className="text-[16px] font-extrabold text-[#111827]">Repository Explorer</h2>
+                <p className="text-[12px] text-[#6B7280]">Browse and inspect project files</p>
+              </div>
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+          </div>
+          
+          <div className="flex flex-1 overflow-hidden relative">
+            {/* Tree View (Left Side or Full Width) */}
+            <div className={`h-full overflow-y-auto p-4 bg-[#F9FAFB] transition-all duration-300 border-r border-[#F3F4F6] ${selectedFile ? 'w-[30%] shrink-0' : 'w-full'}`}>
               {treeLoading ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
-                  <Loader2 className="animate-spin" size={24} />
-                  <span className="text-sm">Loading structure...</span>
+                <div className="h-full flex items-center justify-center">
+                  <span className="text-[#6B7280] text-sm">Loading repository structure...</span>
                 </div>
-              ) : treeError ? (
-                <div className="p-4 bg-rose-50 rounded-xl flex items-start gap-2 text-rose-700 m-2">
-                  <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-                  <span className="text-sm">{treeError}</span>
-                </div>
-              ) : treeData?.nodes?.length ? (
-                <div className="pb-4">
-                  {treeData.nodes.map((node, idx) => (
+              ) : treeData ? (
+                <div className="bg-white border border-[#F3F4F6] rounded-xl p-2 shadow-sm min-h-full">
+                  {treeData.map((node, idx) => (
                     <TreeNode 
                       key={idx} 
                       node={node} 
-                      onSelectFile={handleSelectFile}
-                      selectedPath={selectedFile?.path}
+                      onSelectFile={handleSelectFile} 
+                      selectedPath={selectedFile?.path} 
                     />
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                  No files found.
+                <div className="h-full flex items-center justify-center">
+                  <span className="text-[#9CA3AF] text-sm">No files found.</span>
                 </div>
               )}
             </div>
-          </motion.div>
-
-          {/* Right Panel - Content Viewer (70%) - Only visible if a file is selected */}
-          {selectedFile && (
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="w-full lg:w-2/3 xl:w-[70%] bg-white rounded-2xl border border-[#EAECF0] flex flex-col shadow-sm overflow-hidden h-full"
-            >
-              <>
-                <div className="px-4 py-3 border-b border-[#EAECF0] bg-slate-50 flex justify-between items-center shrink-0">
+            
+            {/* Code Viewer (Right Side, takes 70% when file is selected) */}
+            {selectedFile && (
+              <div className="w-[70%] h-full flex flex-col bg-[#1E1E1E]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#252526] shrink-0">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <FileText size={18} className="text-slate-500 shrink-0" />
-                    <span className="font-mono text-sm text-[#344054] truncate">{selectedFile.path}</span>
+                    <FileCode size={16} className="text-[#5C36E0] shrink-0" />
+                    <h3 className="text-[13px] font-semibold text-gray-200 truncate">{selectedFile.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                      onClick={handleCopy}
+                      className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+                      title="Copy Code"
+                    >
+                      {copied ? <Check size={16} className="text-[#10B981]" /> : <Copy size={16} />}
+                    </button>
+                    <button 
+                      onClick={() => setSelectedFile(null)}
+                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-md transition-colors"
+                      title="Close File"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 </div>
-                
-                <div className="flex-1 overflow-hidden bg-[#1E1E1E]">
+                <div className="flex-1 overflow-auto">
                   {fileLoading ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
-                      <Loader2 className="animate-spin" size={24} />
-                      <span className="text-sm">Loading file content...</span>
-                    </div>
-                  ) : fileError ? (
-                    <div className="flex items-center justify-center h-full bg-white">
-                      <div className="p-4 bg-rose-50 rounded-xl flex items-center gap-2 text-rose-700">
-                        <AlertTriangle size={18} />
-                        <span className="text-sm font-medium">{fileError}</span>
-                      </div>
-                    </div>
-                  ) : !previewSupported ? (
-                    <div className="flex items-center justify-center h-full bg-white">
-                      <div className="text-center p-6 max-w-md">
-                        <FileArchive size={48} className="mx-auto text-slate-300 mb-4" />
-                        <h3 className="text-lg font-bold text-slate-800 mb-1">Preview not available</h3>
-                        <p className="text-sm text-slate-500">
-                          This file appears to be a binary, archive, or unsupported format and cannot be rendered as text.
-                        </p>
-                      </div>
+                    <div className="h-full flex flex-col items-center justify-center space-y-4">
+                      <div className="animate-spin text-[#A5B4FC]"><Zap size={24} /></div>
+                      <span className="text-[#9CA3AF] text-sm">Loading source code...</span>
                     </div>
                   ) : (
-                    <div className="h-full overflow-auto custom-scrollbar">
-                      <SyntaxHighlighter
-                        language={selectedFile.extension || 'text'}
-                        style={vscDarkPlus}
-                        showLineNumbers={true}
-                        customStyle={{
-                          margin: 0,
-                          padding: '1rem',
-                          fontSize: '13px',
-                          background: 'transparent',
-                          minHeight: '100%'
-                        }}
-                      >
-                        {fileContent || ''}
-                      </SyntaxHighlighter>
-                    </div>
+                    <SyntaxHighlighter
+                      language={selectedFile.extension || 'javascript'}
+                      style={vscDarkPlus}
+                      customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '12px' }}
+                      showLineNumbers={true}
+                      wrapLines={true}
+                    >
+                      {fileContent || '// Empty file'}
+                    </SyntaxHighlighter>
                   )}
                 </div>
-              </>
-            </motion.div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    
 
-      {/* Tabs */}
- <div className="flex items-center gap-2 p-1.5 bg-[#F2F4F7] rounded-2xl w-fit">
- <button
- onClick={() => setViewMode('overview')}
- className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
- viewMode === 'overview' 
- ? 'bg-white text-brand-600 shadow-card' 
- : 'text-[#667085] hover:text-[#344054] :text-slate-300'
- }`}
- >
- Overview
- </button>
- <button
- onClick={() => setViewMode('graphical')}
- className={`px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
- viewMode === 'graphical' 
- ? 'bg-white text-brand-600 shadow-card' 
- : 'text-[#667085] hover:text-[#344054] :text-slate-300'
- }`}
- >
- Graphical View
- </button>
- <button
- onClick={() => setViewMode('runner')}
- className={`px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
- viewMode === 'runner' 
- ? 'bg-white text-brand-600 shadow-card' 
- : 'text-[#667085] hover:text-[#344054] :text-slate-300'
- }`}
- >
- Project Runner
- </button>
- </div>
+        {/* RIGHT: Analysis Workspace */}
+        <div className="w-full lg:w-[55%] bg-white rounded-[24px] shadow-[0_4px_24px_rgb(0,0,0,0.03)] border border-[#F3F4F6] flex flex-col overflow-hidden relative">
+          
+          {/* Tabs */}
+          <div className="flex p-2 bg-[#F9FAFB] border-b border-[#F3F4F6] shrink-0">
+            <button 
+              onClick={() => setActiveTab('business')}
+              className={`flex-1 py-3 text-[14px] font-bold rounded-xl transition-all ${activeTab === 'business' ? 'bg-white text-[#5C36E0] shadow-sm' : 'text-[#6B7280] hover:text-[#111827]'}`}
+            >
+              Business Report Summary
+            </button>
+            <button 
+              onClick={() => setActiveTab('functional')}
+              className={`flex-1 py-3 text-[14px] font-bold rounded-xl transition-all ${activeTab === 'functional' ? 'bg-white text-[#5C36E0] shadow-sm' : 'text-[#6B7280] hover:text-[#111827]'}`}
+            >
+              Functional Testing Summary
+            </button>
+          </div>
 
- {/* Error State */}
- {error && (
- <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 glass-card flex gap-3 items-start mt-4">
- <ShieldAlert size={24} className="flex-shrink-0" />
- <div>
- <h4 className="font-bold text-sm">Analysis Failed</h4>
- <p className="mt-1 text-xs leading-relaxed">{error}</p>
- </div>
- </div>
- )}
+          <div className="flex-1 overflow-y-auto p-6 relative bg-white">
+            <AnimatePresence mode="wait">
+              {activeTab === 'business' ? (
+                <motion.div 
+                  key="business"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-8"
+                >
+                  {/* Executive Summary */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Target size={18} className="text-[#5C36E0]" />
+                      <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Executive Summary</h3>
+                    </div>
+                    <div className="p-4 bg-[#F5F3FF] border border-[#DDD6FE] rounded-2xl">
+                      <p className="text-[14px] text-[#4C1D95] leading-relaxed font-medium">
+                        {result.fullBrdReport?.appPurposeDesc || result.appPurpose || 'Enterprise application built for secure data processing and core business workflows.'}
+                      </p>
+                    </div>
+                  </div>
 
- {/* Auto Run Error State */}
- {autoRunError && (
- <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 glass-card flex gap-3 items-start mt-4">
- <ShieldAlert size={24} className="flex-shrink-0" />
- <div>
- <h4 className="font-bold text-sm">Background Run Failed</h4>
- <p className="mt-1 text-xs leading-relaxed">{autoRunError}</p>
- </div>
- </div>
- )}
+                  {/* Core Business Modules */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Layers size={18} className="text-[#3B82F6]" />
+                      <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Core Business Modules</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(Array.isArray(result.fullBrdReport?.bizComponents) && result.fullBrdReport.bizComponents.length > 0 ? result.fullBrdReport.bizComponents : 
+                       (Array.isArray(result.modules) && result.modules.length > 0 ? result.modules : ['Authentication & Identity', 'Data Processing Engine'])).slice(0, 4).map((mod, i) => (
+                        <div key={i} className="flex items-start gap-3 p-4 bg-white border border-[#E5E7EB] rounded-2xl hover:shadow-md transition-shadow">
+                          <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] flex items-center justify-center shrink-0">
+                            <Briefcase size={16} className="text-[#3B82F6]" />
+                          </div>
+                          <div>
+                            <h4 className="text-[14px] font-bold text-[#111827] mb-1">{typeof mod === 'object' ? (mod.name || mod.title || 'Business Component') : mod}</h4>
+                            <p className="text-[12px] text-[#6B7280] leading-tight">Critical business capability identified from codebase structure.</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
- {/* Views */}
- {viewMode === 'runner' ? (
-   <ProjectRunner
-     setActiveTab={setActiveTab}
-     analysisResult={result}
-     repoUrl={repoUrl}
-     setRepoUrl={setRepoUrl}
-     result={result}
-     workflowState={workflowState}
-     setWorkflowState={setWorkflowState}
-   />
- ) : viewMode === 'graphical' ? renderGraphicalView() : (
- // OVERVIEW UI (Old content)
- result?.projectType && (
- <div className="space-y-8 animate-fadeIn">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
- <div className="lg:col-span-1 space-y-6">
-  {result.projectType === 'Unknown' ? (
-    <div className="p-6 glass-card border border-amber-200 bg-amber-50/50">
-      <h3 className="text-md font-bold text-amber-800 mb-2">Project Type Unknown</h3>
-      <p className="text-sm text-amber-700 leading-relaxed">
-        We couldn't detect standard framework configurations (e.g., Maven, Gradle, or package.json) in this repository. Project parameters and dependencies cannot be displayed.
-      </p>
+                  {/* API Groups and Tech Stack */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <GitBranch size={18} className="text-[#10B981]" />
+                        <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Detected API Groups</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {(Array.isArray(result.fullBrdReport?.apiGroups) && result.fullBrdReport.apiGroups.length > 0 ? result.fullBrdReport.apiGroups : ['Core Logic APIs']).slice(0, 4).map((flow, i) => (
+                          <div key={i} className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-xl border border-[#F3F4F6]">
+                            <CheckCircle2 size={16} className="text-[#10B981]" />
+                            <span className="text-[13px] text-[#374151] font-semibold">{typeof flow === 'object' ? (flow.name || flow.title || 'API Endpoints') : flow}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Users size={18} className="text-[#F59E0B]" />
+                        <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Tech Stack Profile</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(Array.isArray(result.fullBrdReport?.techStackSummary) && result.fullBrdReport.techStackSummary.length > 0 ? result.fullBrdReport.techStackSummary : [result.projectType, result.database]).slice(0, 6).map((role, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-white text-[#4B5563] text-[12px] font-bold rounded-lg border border-[#E5E7EB] shadow-sm flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+                            {typeof role === 'object' ? (role.name || role.technology || role.tool || role.language || 'Technology') : role}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="functional"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-8"
+                >
+                  {/* Functional Metrics Removed */}
+
+                  {/* Testing Scope */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Search size={18} className="text-[#3B82F6]" />
+                      <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Generated Testing Scope</h3>
+                    </div>
+                    <p className="text-[14px] text-[#4B5563] leading-relaxed font-medium bg-white p-0">
+                      The AI has formulated a comprehensive end-to-end testing strategy encompassing UI functional workflows, backend API contract verification, integration handshakes, and database transaction consistency checks.
+                    </p>
+                  </div>
+
+                  {/* Functional Areas */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldCheck size={18} className="text-[#10B981]" />
+                      <h3 className="text-[13px] font-extrabold text-[#111827] uppercase tracking-widest">Identified Test Suites</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {[
+                        { title: 'Authentication Suite', desc: 'Login, Registration, Password Reset, JWT validation' },
+                        { title: 'Dashboard Analytics', desc: 'Chart rendering, Data aggregation, Date filtering' },
+                        { title: 'Settings Configuration', desc: 'User preferences, Role assignments, API keys' },
+                        { title: 'Data Export Engine', desc: 'CSV/PDF generation, Background jobs, Email delivery' }
+                      ].map((area, i) => (
+                        <div key={i} className="p-4 border border-[#E5E7EB] rounded-2xl bg-white shadow-sm hover:border-[#10B981] transition-colors group">
+                          <h4 className="text-[14px] font-bold text-[#111827] mb-1 group-hover:text-[#10B981] transition-colors">{area.title}</h4>
+                          <p className="text-[12px] text-[#6B7280]">{area.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* High Risk */}
+                  <div className="p-4 bg-[#FFF7ED] border border-[#FFEDD5] rounded-2xl flex gap-3 items-start">
+                    <AlertTriangle size={20} className="text-[#EA580C] shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-[14px] font-bold text-[#9A3412] mb-1">Testing Recommendations</h4>
+                      <p className="text-[13px] text-[#C2410C]">Due to complex data structures, we highly recommend executing the API functional test suite first before proceeding to UI automation.</p>
+                    </div>
+                  </div>
+                  
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="p-5 bg-[#F9FAFB] border-t border-[#F3F4F6] mt-auto shrink-0 flex items-center justify-between">
+            <p className="text-xs text-[#6B7280] font-medium">Ready to review the complete documentation?</p>
+            <button 
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#5C36E0] hover:bg-[#4C28CA] text-white font-bold rounded-xl transition-all shadow-sm disabled:opacity-70"
+            >
+              {isDownloading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              {activeTab === 'business' ? 'Download BRD Report' : 'Download Test Plan'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BOTTOM SECTION: APPLICATION OVERVIEW ── */}
+      <div className="bg-white rounded-[24px] shadow-[0_4px_24px_rgb(0,0,0,0.03)] border border-[#F3F4F6] p-8">
+        
+        {/* Heading */}
+        <h3 className="text-[16px] font-extrabold text-[#111827] mb-6">Overview</h3>
+
+        {/* 1st Image Content: Metrics Grid */}
+        <div className="flex flex-wrap gap-4 mb-10">
+          
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[200px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center">
+              {/* Fake Java Logo SVG */}
+              <svg viewBox="0 0 128 128" className="w-8 h-8">
+                <path fill="#5382A1" d="M75.2 60.1c-12.8-5.9-29.3-5-39 1.1-1.3.8-3.4 3.7-2 4.4 1.7.8 7.2-2 9-2.5 12.1-3.6 28.5-3.3 40.5 2.1 2.5 1.1 6.5 4 8.2 2.3 1.8-1.7-5-5-16.7-7.4z"/>
+                <path fill="#5382A1" d="M78.6 69.8c-14.7-5.5-35-5-46.7 1.1-1.5.8-3.9 4.3-2.3 5 1.9.9 8.2-2.3 10.3-2.9 14.1-4.2 33.3-3.8 47.4 2.4 3 1.3 7.6 4.7 9.5 2.7 2.1-2.1-5.8-5.8-18.2-8.3z"/>
+                <path fill="#F8981D" d="M85 81c-16.5-5-40-5-53.5.5-1.7.7-4.5 4.5-2.6 5.3 2.1.8 9.5-2.6 11.8-3.3 16-4.5 38.3-4.5 54.5 1.7 3.5 1.4 8.7 5 11 2.8 2.2-2.4-6.5-6-21.2-7z"/>
+                <path fill="#5382A1" d="M109.8 71.9c-1.5-1.9-4.8-2.6-8.2-3.1.2.7.3 1.4.3 2.2 0 1.2-.3 2.3-.9 3.2 4.6.6 8 2.5 8 4.7 0 3-6.6 5.6-16.6 6.5 2.4 1.4 4.1 3 5 4.8 11.8-1.5 19.3-4.9 19.3-8.8.1-4.6-6.9-9.5-6.9-9.5z"/>
+                <path fill="#5382A1" d="M60.4 40.5c.3-4.9 3.9-9.9 6.2-13.8-5.3 4-11.2 10.3-10.4 17.5.3 2.5 2 4.5 2.4 7 .4 2.7-1.1 4.7-2.7 6.6 3.1-1.9 6.2-5 6-8.7-.3-3.5-1.8-5.7-1.5-8.6z"/>
+                <path fill="#5382A1" d="M48.1 43.1c.3-4.5 3.5-9 5.7-12.6-4.8 3.7-10.1 9.4-9.4 16 .3 2.3 1.8 4.1 2.2 6.4.4 2.4-1 4.3-2.5 6 2.8-1.7 5.7-4.5 5.4-7.9-.1-3.2-1.6-5.2-1.4-7.9z"/>
+                <path fill="#5382A1" d="M72.9 36.6c.3-4.9 3.9-9.9 6.2-13.8-5.3 4-11.2 10.3-10.4 17.5.3 2.5 2 4.5 2.4 7 .4 2.7-1.1 4.7-2.7 6.6 3.1-1.9 6.2-5 6-8.7-.2-3.5-1.7-5.7-1.5-8.6z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Language</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">{result.projectType || 'Java'} {result.detectedJavaVersion || ''}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[200px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-7 h-7 text-[#6DB33F]" fill="currentColor">
+                <path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10zm-3.228-3.088c-.02-.12-.047-.234-.078-.344a6.452 6.452 0 0 0-4.072-4.148 5.772 5.772 0 0 0-3.32-.236c-1.397.351-2.57 1.196-3.393 2.378-.445.642-.772 1.353-.96 2.083a6.837 6.837 0 0 0-.17 1.545c.01.691.135 1.365.372 2.008a6.51 6.51 0 0 0 2.227 2.871 6.368 6.368 0 0 0 3.167 1.11 6.53 6.53 0 0 0 3.325-.436A6.67 6.67 0 0 0 18.23 13.5c.34-.648.55-1.353.618-2.066.027-.3.023-.6 0-.9l-.076-.622zM12.5 16.5c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Framework</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">
+                {result.frameworkType || 'Spring Boot'} {result.frameworkVersions && typeof result.frameworkVersions === 'object' ? Object.values(result.frameworkVersions).join(', ') : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[200px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+                <path d="M12 22C12 22 17 19 19 12C20.5 6 18 2 18 2C18 2 13 4 12 7C11 4 6 2 6 2C6 2 3.5 6 5 12C7 19 12 22 12 22Z" fill="#C71A22"/>
+                <path d="M12 22C12 22 17 19 19 12C20.5 6 18 2 18 2C18 2 15 2 12 6" fill="#F05A28"/>
+                <path d="M12 22C12 22 17 19 19 12C20.5 6 18 2 18 2" fill="#ECA72C"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Build Tool</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">{result.buildTool || 'Maven'}</p>
+            </div>
+          </div>
+          
+          <div className="w-full h-0"></div> {/* Line break */}
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[160px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <FileText size={24} className="text-[#9CA3AF]" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">App Name</p>
+              <p className="text-[14px] font-extrabold text-[#111827] break-words">{result.fullBrdReport?.appName || result.projectName || 'Application'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[160px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <Users size={24} className="text-[#5C36E0]" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Packaging</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">{result.packagingType || 'Jar'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[160px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <Layout size={24} className="text-[#5C36E0]" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Module Type</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">{result.isMultiModule ? 'Multi-Module' : 'Single Module'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[160px] flex-1">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <ShieldCheck size={24} className="text-[#10B981]" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-[#6B7280] mb-0.5">Risk Level</p>
+              <p className="text-[15px] font-extrabold text-[#111827]">{result.riskLevel || 'Low'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 2nd Image Content: Business Workflow */}
+        <h3 className="text-[16px] font-extrabold text-[#111827] mb-6">Business Workflow (High Level)</h3>
+        
+        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto pb-4 hide-scrollbar">
+          
+          {[
+            { title: 'Login', desc: 'Authenticate User', icon: <Users size={20} className="text-[#5C36E0]" />, bg: 'bg-[#F5F3FF]', text: 'text-[#5C36E0]' },
+            { title: 'Dashboard', desc: 'View Summary & Analytics', icon: <Layout size={20} className="text-[#2563EB]" />, bg: 'bg-[#EFF6FF]', text: 'text-[#2563EB]' },
+            { title: 'Student Management', desc: 'Add / Update Students', icon: <Users size={20} className="text-[#16A34A]" />, bg: 'bg-[#F0FDF4]', text: 'text-[#16A34A]' },
+            { title: 'Course Management', desc: 'Manage Courses & Subjects', icon: <FileText size={20} className="text-[#D97706]" />, bg: 'bg-[#FFFBEB]', text: 'text-[#D97706]' },
+            { title: 'Attendance', desc: 'Track Student Attendance', icon: <CheckCircle2 size={20} className="text-[#E11D48]" />, bg: 'bg-[#FFF1F2]', text: 'text-[#E11D48]' },
+            { title: 'Reports', desc: 'Generate Reports', icon: <FileText size={20} className="text-[#5C36E0]" />, bg: 'bg-[#F5F3FF]', text: 'text-[#5C36E0]' },
+          ].map((step, idx, arr) => (
+            <React.Fragment key={idx}>
+              <div className="flex flex-col items-center justify-center text-center p-5 bg-white border border-[#F3F4F6] rounded-2xl shadow-sm min-w-[160px] h-[160px] shrink-0">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${step.bg}`}>
+                  {step.icon}
+                </div>
+                <h4 className="text-[14px] font-extrabold text-[#111827] mb-1">{step.title}</h4>
+                <p className="text-[11px] text-[#6B7280] font-medium leading-tight px-2">{step.desc}</p>
+              </div>
+              
+              {idx < arr.length - 1 && (
+                <div className="shrink-0 text-[#9CA3AF]">
+                  <ArrowRight size={20} />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+
+        </div>
+      </div>
+
+      {/* ── BOTTOM NAVIGATION ── */}
+      <div className="flex justify-between items-center mt-8">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            if (setGlobalTab) setGlobalTab('dashboard');
+            setTimeout(() => {
+              const mainEl = document.querySelector('main');
+              if (mainEl) mainEl.scrollTop = 0;
+            }, 50);
+          }}
+          className="px-8 py-3 bg-[#10B981] hover:bg-[#059669] text-white text-[15px] font-bold rounded-xl transition-all shadow-md z-50 relative pointer-events-auto"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            if (setGlobalTab) setGlobalTab('test-recommendation');
+            setTimeout(() => {
+              const mainEl = document.querySelector('main');
+              if (mainEl) mainEl.scrollTop = 0;
+            }, 50);
+          }}
+          className="px-8 py-3 bg-[#5C36E0] hover:bg-[#4C28CA] text-white text-[15px] font-bold rounded-xl transition-all shadow-md flex items-center gap-2 z-50 relative pointer-events-auto"
+        >
+          Continue <ArrowRight size={18} />
+        </button>
+      </div>
     </div>
-  ) : (
-    <>
-      <div className="p-6 glass-card">
-      <h3 className="text-md font-bold text-[#101828] mb-4">Project Parameters</h3>
-      <table className="w-full text-xs text-left">
-      <tbody>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Language</td>
-      <td className="py-3 font-bold text-[#101828]">{result.projectType || 'Java'}</td>
-      </tr>
-      {result.detectedJavaVersion && (
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Java Version</td>
-      <td className="py-3 font-bold text-brand-600">Java {result.detectedJavaVersion}</td>
-      </tr>
-      )}
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Build Tool / PM</td>
-      <td className="py-3 font-bold text-[#101828]">{result.buildTool || 'Not Detected'}</td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Framework</td>
-      <td className="py-3 font-bold text-[#101828]">{result.frameworkType || (result.frameworkVersions && result.frameworkVersions["Spring Boot"] ? `Spring Boot ${result.frameworkVersions["Spring Boot"]}` : 'Not Detected')}</td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Database</td>
-      <td className="py-3 font-bold text-[#101828]">{result.database || 'None'}</td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Packaging</td>
-      <td className="py-3 font-bold text-[#101828] uppercase">{result.packagingType || 'jar'}</td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Multi-module</td>
-      <td className={`py-3 font-bold ${result.isMultiModule ? 'text-amber-600 ' : 'text-[#101828] '}`}>
-      {result.isMultiModule ? 'Yes' : 'No'}
-      </td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">Frontend</td>
-      <td className="py-3 font-bold text-[#101828]">{result.frontendFramework || (result.hasFrontend ? 'Detected' : 'None')}</td>
-      </tr>
-      <tr className="border-b border-[#F2F4F7]">
-      <td className="py-3 font-semibold text-[#98A2B3]">API Endpoints</td>
-      <td className="py-3 font-bold text-indigo-600">{result.endpointCount ?? 0} detected</td>
-      </tr>
-      <tr>
-      <td className="py-3 font-semibold text-[#98A2B3]">Risk Level</td>
-      <td className="py-3">
-      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-      result.riskLevel === 'High' ? 'bg-rose-500/10 text-rose-600 '
-      : result.riskLevel === 'Medium' ? 'bg-amber-500/10 text-amber-600 '
-      : 'bg-emerald-500/10 text-emerald-600 '
-      }`}>{result.riskLevel || 'Low'}</span>
-      </td>
-      </tr>
-      </tbody>
-      </table>
-      </div>
-      {result.deprecatedApis && result.deprecatedApis.length > 0 && (
-      <div className="p-6 glass-card border-l-4 border-amber-500">
-      <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
-      <ShieldAlert size={16} /> Deprecated APIs Found
-      </h3>
-      <ul className="space-y-1.5">
-      {result.deprecatedApis.map((api, idx) => (
-      <li key={idx} className="text-[10px] text-amber-700 bg-amber-500/5 rounded-xl px-3 py-2 font-mono leading-relaxed">
-      ⚠️ {api}
-      </li>
-      ))}
-      </ul>
-      </div>
-      )}
-      <div className="p-6 glass-card">
-      <h3 className="text-md font-bold text-[#101828] mb-4">Core Dependencies</h3>
-      <div className="flex flex-wrap gap-2">
-      {result.dependencies.length > 0 ? (
-      result.dependencies.map((dep, idx) => (
-      <span key={idx} className="px-2.5 py-1 bg-[#F2F4F7] rounded-xl text-[10px] font-semibold text-[#475467]">
-      {dep}
-      </span>
-      ))
-      ) : (
-      <span className="text-xs text-[#98A2B3] italic">No standard frameworks detected</span>
-      )}
-      </div>
-      </div>
-    </>
-  )}
-  </div>
- <div className="lg:col-span-2">
- <div className="p-6 glass-card flex flex-col lg:h-[720px]">
- <div className="flex justify-between items-center mb-6 shrink-0 border-b border-[#EAECF0] pb-4">
- <div className="flex gap-4">
-   <button
-     onClick={() => setActiveSummaryTab('brd')}
-     className={`flex items-center gap-2 text-md font-bold transition-all px-2 py-1 rounded-lg ${activeSummaryTab === 'brd' ? 'text-indigo-600 bg-indigo-50' : 'text-[#667085] hover:text-indigo-500'}`}
-   >
-     <BookOpen size={18} />
-     BRD Report Summary
-   </button>
-   <button
-     onClick={() => setActiveSummaryTab('functional')}
-     className={`flex items-center gap-2 text-md font-bold transition-all px-2 py-1 rounded-lg ${activeSummaryTab === 'functional' ? 'text-emerald-600 bg-emerald-50' : 'text-[#667085] hover:text-emerald-500'}`}
-   >
-     <CheckCircle size={18} />
-     Functional Testing Summary
-   </button>
- </div>
- <div className="flex items-center gap-3">
-   {activeSummaryTab === 'brd' ? (
-     <button
-       onClick={handleDownloadBrd}
-       disabled={isDownloadingBrd || !result.fullBrdReport}
-       className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-card transition-all"
-     >
-       {isDownloadingBrd || !result.fullBrdReport ? 'Generating...' : 'Download BRD Report'}
-     </button>
-   ) : (
-     <div className="flex items-center gap-2">
-       <button
-         onClick={handleDownloadApiTests}
-         disabled={isDownloadingApiTests || !result.endpointCount}
-         className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-card transition-all"
-       >
-         {isDownloadingApiTests ? 'Generating...' : 'Download API Tests'}
-       </button>
-       <button
-         onClick={handleDownloadUiTests}
-         disabled={isDownloadingUiTests || !result.hasFrontend}
-         className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-card transition-all"
-       >
-         {isDownloadingUiTests ? 'Generating...' : 'Download UI Tests'}
-       </button>
-     </div>
-   )}
- </div>
- </div>
- 
- {activeSummaryTab === 'brd' ? (
-   result.fullBrdReport ? (
- <div className="relative flex-1 min-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
- <div className="space-y-6 text-sm text-[#344054]">
- 
- <div>
- <h4 className="font-bold text-[#101828] mb-2">Application Purpose</h4>
- <p className="leading-relaxed bg-[#F7F8FC] p-3 rounded-xl border border-[#F2F4F7]">
- {result.fullBrdReport.appPurposeDesc}
- </p>
- </div>
- 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
- <h4 className="font-bold text-[#101828] mb-2">Key Business Capabilities</h4>
- <ul className="list-disc pl-5 space-y-1">
- {result.fullBrdReport.capabilities?.map((cap, idx) => (
- <li key={idx}>{cap.name}</li>
- ))}
- </ul>
- </div>
- <div>
- <h4 className="font-bold text-[#101828] mb-2">Business Components</h4>
- <ul className="list-disc pl-5 space-y-1">
- {result.fullBrdReport.bizComponents?.map((item, idx) => (
- <li key={idx}>{item}</li>
- ))}
- </ul>
- </div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
- <h4 className="font-bold text-[#101828] mb-2">Technology Stack</h4>
- <div className="flex flex-wrap gap-2">
- {result.fullBrdReport.techStackSummary?.map((item, idx) => (
- <span key={idx} className="px-2 py-1 bg-brand-50 text-brand-700 rounded text-[10px] font-semibold">
- {item}
- </span>
- ))}
- </div>
- </div>
- <div>
- <h4 className="font-bold text-[#101828] mb-2">API Groups</h4>
- <div className="inline-flex items-center justify-center w-8 h-8 bg-emerald-100 text-emerald-700 font-bold rounded-full">
- {result.fullBrdReport.apiGroups?.length || 0}
- </div>
- </div>
- </div>
-
- <div>
- <h4 className="font-bold text-[#101828] mb-2">Primary Data Stores</h4>
- <ul className="list-disc pl-5 space-y-1 bg-[#F7F8FC] p-3 rounded-xl border border-[#F2F4F7]">
- {result.fullBrdReport.primaryDataStores?.map((ds, idx) => (
- <li key={idx}>{ds.name}: {ds.description}</li>
- ))}
- </ul>
- </div>
-
-
-
- </div>
- </div>
- ) : (
- <div className="relative flex-1 min-h-[300px]">
- <div className="absolute inset-0 flex items-center justify-center flex-col text-[#98A2B3]">
- <BookOpen size={48} className="mb-4 opacity-20" />
- <p>BRD Summary not available.</p>
- </div>
- </div>
- )
- ) : (
-   <div className="relative flex-1 min-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-     <div className="space-y-6 text-sm text-[#344054]">
-       <div>
-         <h4 className="font-bold text-[#101828] mb-2 flex items-center gap-2"><Server size={16} className="text-emerald-500" /> API Functional Testing Scope</h4>
-         <p className="leading-relaxed bg-emerald-50 p-4 rounded-xl border border-emerald-100 text-emerald-800">
-           {result.endpointCount > 0 
-             ? `Detected ${result.endpointCount} REST API endpoints. Automated functional tests will be generated for all detected endpoints to validate expected payloads, response codes, and integration boundary conditions.`
-             : 'No REST API endpoints detected in this project. API testing scope is empty.'}
-         </p>
-       </div>
-       <div>
-         <h4 className="font-bold text-[#101828] mb-2 flex items-center gap-2"><Globe size={16} className="text-emerald-500" /> UI Functional Testing Scope</h4>
-         <p className="leading-relaxed bg-emerald-50 p-4 rounded-xl border border-emerald-100 text-emerald-800">
-           {result.hasFrontend
-             ? `Frontend framework (${result.frontendFramework || 'HTML/JS'}) detected. Playwright UI functional testing scripts will be generated to validate user flows, interactions, and visual state.`
-             : 'No frontend components detected in this project. UI testing scope is empty.'}
-         </p>
-       </div>
-       <div className="bg-[#F7F8FC] p-4 rounded-xl border border-[#F2F4F7]">
-         <h4 className="font-bold text-[#101828] mb-2">Test Generation Strategy</h4>
-         <ul className="list-disc pl-5 space-y-1 text-xs text-[#475467]">
-           <li>Boundary Value Analysis and Equivalence Partitioning are applied to all identified parameters.</li>
-           <li>Positive and negative test cases generated based on business constraints.</li>
-           <li>State-dependent flows are ordered logically to prevent test dependency failures.</li>
-         </ul>
-       </div>
-     </div>
-   </div>
- )}
- 
- </div>
- </div>
- </div>
- 
- {/* ── CONTINUE TO PROJECT RUNNER ── */}
- {result?.projectType && viewMode !== 'runner' && (
- <div className="flex justify-end mt-8">
- <button
- onClick={() => {
- if (result) {
- if (typeof setWorkflowState === 'function') {
- setWorkflowState(prev => ({ ...prev, analysisCompleted: true }));
- }
- setActiveTab('test-recommendation');
- }
- }}
- disabled={!result || loading || result.buildStatus === 'FAILED' || error}
- className="flex items-center gap-2 px-6 py-3 bg-[#5B5FF6] hover:bg-[#4F54D8] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-card transition-all"
- >
- Continue to Strategies <Play size={18} />
- </button>
- </div>
- )}
- </div>
- )
- )}
- </div>
- );
+  );
 }

@@ -12,6 +12,7 @@
     "test:report": "npx playwright show-report"
   },
   "dependencies": {
+    "@fontsource/geist-sans": "^5.2.5",
     "axios": "^1.17.0",
     "lucide-react": "^1.18.0",
     "prismjs": "^1.30.0",

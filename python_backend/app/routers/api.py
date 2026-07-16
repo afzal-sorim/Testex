@@ -7,6 +7,7 @@ from fastapi import APIRouter, Response, BackgroundTasks, WebSocket, WebSocketDi
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 import httpx
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 from app.models import (
     AnalyzeRequest, AnalysisResponse,
@@ -772,7 +773,7 @@ async def playwright_status(repo_name: str):
 
 
 @router.post("/playwright/{repo_name}/run")
-async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
+async def playwright_run(repo_name: str, background_tasks: BackgroundTasks, request: RunTestsRequest = None):
     """Kick off Playwright tests for the migrated project in the background."""
     project_dir = app_config.get_project_dir(repo_name)
     if not project_dir.exists():
@@ -786,10 +787,13 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
 
     # Mark as RUNNING immediately so UI can show spinner
     playwright_service._results[repo_name] = {**detection, "status": "RUNNING"}
+    
+    api_key = request.apiKey if request else None
+    model_name = request.modelName if request else None
 
     # Run tests in the background (non-blocking)
     async def _run():
-        await playwright_service.run_playwright_tests(repo_name, project_dir)
+        await playwright_service.run_playwright_tests(repo_name, project_dir, api_key=api_key, model_name=model_name)
 
     background_tasks.add_task(_run)
     return JSONResponse(content={**detection, "status": "RUNNING"})
@@ -825,9 +829,14 @@ async def get_migration_playwright_status(id: str):
     # Map id to repo_name (which is consistent with how we execute)
     return await playwright_status(repo_name=id)
 
+class RunTestsRequest(BaseModel):
+    apiKey: Optional[str] = None
+    modelName: Optional[str] = None
+    provider: Optional[str] = None
+
 @router.post("/migration/{id}/playwright/run")
-async def run_migration_playwright(id: str, background_tasks: BackgroundTasks):
-    return await playwright_run(repo_name=id, background_tasks=background_tasks)
+async def run_migration_playwright(id: str, background_tasks: BackgroundTasks, request: RunTestsRequest = None):
+    return await playwright_run(repo_name=id, background_tasks=background_tasks, request=request)
 
 @router.get("/migration/{id}/playwright/results")
 async def get_migration_playwright_results(id: str):

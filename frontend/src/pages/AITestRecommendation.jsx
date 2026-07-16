@@ -22,7 +22,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         alert("Please analyze repository first.");
         return;
       }
-      const response = await fetch(`http://localhost:8000/api/reports/ui-functional-test/download/${encodeURIComponent(repoUrl)}`);
+      const response = await fetch(`/api/reports/ui-functional-test/download/${encodeURIComponent(repoUrl)}`);
       if (!response.ok) {
         throw new Error('Failed to download UI test cases');
       }
@@ -51,7 +51,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         alert("Please analyze repository first.");
         return;
       }
-      const response = await fetch(`http://localhost:8000/api/reports/api-test-cases/download/${encodeURIComponent(repoUrl)}`);
+      const response = await fetch(`/api/reports/api-test-cases/download/${encodeURIComponent(repoUrl)}`);
       if (!response.ok) {
         throw new Error('Failed to download API test cases');
       }

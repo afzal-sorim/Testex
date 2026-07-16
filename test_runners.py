@@ -1,7 +1,7 @@
 import requests, time
 
 repo = 'gs-handling-form-submission'
-base_url = 'http://127.0.0.1:8000/api'
+base_url = 'http://127.0.0.1:8090/api'
 
 print('Starting project...')
 requests.post(f'{base_url}/run/start', json={'repoName': repo})

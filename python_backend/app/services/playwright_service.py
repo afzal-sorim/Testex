@@ -80,7 +80,7 @@ class PlaywrightService:
         }
 
     async def run_playwright_tests(
-        self, repo_name: str, project_dir: Path, base_url=None
+        self, repo_name: str, project_dir: Path, base_url=None, api_key: str = None, model_name: str = None
     ) -> Dict[str, Any]:
         """
         Install deps and run Playwright tests inside project_dir.
@@ -93,7 +93,7 @@ class PlaywrightService:
 
         detection = self.detect_playwright(project_dir)
         if not detection.get("playwrightAvailable") or detection.get("testFilesCount", 0) == 0:
-            self._generate_playwright_scaffolding(project_dir)
+            self._generate_playwright_scaffolding(project_dir, api_key, model_name)
             detection = self.detect_playwright(project_dir)
             
         if not detection.get("playwrightAvailable"):
@@ -156,7 +156,7 @@ class PlaywrightService:
                             found.add(str(f))
         return list(found)
 
-    def _generate_playwright_scaffolding(self, project_dir: Path):
+    def _generate_playwright_scaffolding(self, project_dir: Path, api_key: str = None, model_name: str = None):
         """Generates a generic Playwright test and config if none exist."""
         # 1. Update package.json
         pkg_path = project_dir / "package.json"
@@ -276,10 +276,10 @@ test.describe('Navigation & Core Routing', () => {
             
             user_prompt = f"Generate Playwright test cases for the following UI source code.\n\nSource Code:\n{code_context[:20000]}"
             
-            print("[Playwright Scaffold] Calling LLM to generate realistic UI tests...")
+            print(f"[Playwright Scaffold] Calling LLM to generate realistic UI tests with api_key={'provided' if api_key else 'missing'}...")
             from app.ai.ai_factory import AIFactory
             ai_client = AIFactory.get_client()
-            ai_result = ai_client.generate(user_prompt, system_instruction, None, None)
+            ai_result = ai_client.generate(user_prompt, system_instruction, api_key, model_name)
             
             cleaned_code = ai_result.replace("```typescript", "").replace("```ts", "").replace("```", "").strip()
             if cleaned_code and "import { test" in cleaned_code:

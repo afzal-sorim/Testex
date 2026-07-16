@@ -65,6 +65,10 @@ class AnalysisResponse(BaseModel):
     hasFrontend: bool = False
     frontendFramework: Optional[str] = None   # "React", "Angular", "Vue", "Thymeleaf", "JSP"
     endpointCount: int = 0
+    testCasesCount: int = 0
+    testCasesPassed: int = 0
+    testCasesFailed: int = 0
+    testingTypes: List[str] = []
     riskLevel: Optional[str] = None           # "Low", "Medium", "High"
     deprecatedApis: List[str] = []
     dependencies: List[str] = []

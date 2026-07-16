@@ -1,0 +1,208 @@
+{
+  "summary": [
+    {
+      "scenario": "Verify Dashboard Page Load",
+      "purpose": "To ensure the dashboard page loads correctly after successful authentication and displays user-specific information.",
+      "expected": "The dashboard page should load, display 'Welcome to the Dashboard', and show the logged-in username.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify User Logout Functionality",
+      "purpose": "To ensure users can successfully log out from the application and are redirected to the login page with a logout message.",
+      "expected": "User should be redirected to the login page, and a 'You have been logged out.' message should be displayed.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Login Page Load",
+      "purpose": "To ensure the login page loads correctly and all necessary elements (inputs, buttons, links) are present.",
+      "expected": "The login page should load, display 'Welcome Back', and contain username/password input fields, a 'Sign In' button, and a 'Sign up' link.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Successful User Login",
+      "purpose": "To ensure a registered user can log in successfully with valid credentials.",
+      "expected": "User should be redirected to the dashboard page after successful login.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Unsuccessful User Login with Invalid Credentials",
+      "purpose": "To ensure the system handles invalid login attempts gracefully and displays an appropriate error message.",
+      "expected": "User should remain on the login page (or be redirected to /login?error) and an 'Invalid username and password.' error message should be displayed.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Navigation from Login to Register Page",
+      "purpose": "To ensure the 'Sign up' link on the login page correctly navigates to the registration page.",
+      "expected": "User should be redirected to the registration page.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Login Page after Logout Message",
+      "purpose": "To ensure the login page displays the correct message after a user logs out.",
+      "expected": "The login page should display 'You have been logged out.' message.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Login Page with Error Message",
+      "purpose": "To ensure the login page correctly displays an error message when an 'error' parameter is present.",
+      "expected": "The login page should display 'Invalid username and password.' error message.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Login Page with Success Message",
+      "purpose": "To ensure the login page correctly displays a success message when a 'success' parameter is present (e.g., after registration).",
+      "expected": "The login page should display the provided success message.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Register Page Load",
+      "purpose": "To ensure the registration page loads correctly and all necessary elements (inputs, buttons, links) are present.",
+      "expected": "The registration page should load, display 'Create Account', and contain username/password input fields, a 'Create Account' button, and a 'Sign in' link.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Successful User Registration",
+      "purpose": "To ensure a new user can successfully register with unique credentials.",
+      "expected": "User should be redirected to the login page with a success message after successful registration.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Unsuccessful User Registration (e.g., existing username)",
+      "purpose": "To ensure the system prevents registration with duplicate usernames and displays an appropriate error message.",
+      "expected": "User should remain on the registration page (or be redirected to /register with error) and an error message (e.g., 'Username already exists.') should be displayed.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Navigation from Register to Login Page",
+      "purpose": "To ensure the 'Sign in' link on the registration page correctly navigates to the login page.",
+      "expected": "User should be redirected to the login page.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    },
+    {
+      "scenario": "Verify Register Page with Error Message",
+      "purpose": "To ensure the registration page correctly displays an error message when an 'error' parameter is present.",
+      "expected": "The registration page should display the provided error message.",
+      "migration_result": "Passed",
+      "status": "Pass"
+    }
+  ],
+  "metrics": {
+    "pages_to_test": 3,
+    "detected_routes": 4,
+    "forms_detected": 3,
+    "data_tables": 0
+  },
+  "test_cases": [
+    {
+      "route": "/",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Dashboard Page Load",
+      "interaction": "Page load only",
+      "steps": "1. Navigate to the application's base URL (e.g., after successful login). 2. Verify the page title is 'Dashboard - Auth Demo'. 3. Verify the text 'Welcome to the Dashboard' is visible. 4. Verify the text 'Hello, [username]' is displayed in the navigation bar."
+    },
+    {
+      "route": "/",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify User Logout Functionality",
+      "interaction": "Yes",
+      "steps": "1. Log in as a valid user (e.g., using pre-existing credentials like 'user'/'password'). 2. On the Dashboard page, locate and click the 'Log Out' button in the navigation bar. 3. Verify that the browser is redirected to the '/login' page. 4. Verify that the success message 'You have been logged out.' is displayed on the login page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Login Page Load",
+      "interaction": "Page load only",
+      "steps": "1. Navigate directly to '/login'. 2. Verify the page title is 'Login - Auth Demo'. 3. Verify the heading 'Welcome Back' and sub-heading 'Sign in to continue' are visible. 4. Verify the presence of an input field with `id='username'` and `name='username'`. 5. Verify the presence of an input field with `id='password'` and `name='password'`. 6. Verify the presence of a button with text 'Sign In'. 7. Verify the presence of a link with text 'Sign up' that points to '/register'."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Successful User Login",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/login'. 2. In the 'username' field, enter a valid username (e.g., 'user'). 3. In the 'password' field, enter a valid password (e.g., 'password'). 4. Click the 'Sign In' button. 5. Verify that the browser is redirected to the '/' (Dashboard) page. 6. Verify that the text 'Welcome to the Dashboard' is visible on the page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Unsuccessful User Login with Invalid Credentials",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/login'. 2. In the 'username' field, enter an invalid username (e.g., 'invaliduser'). 3. In the 'password' field, enter an invalid password (e.g., 'wrongpass'). 4. Click the 'Sign In' button. 5. Verify that the browser is redirected to '/login?error'. 6. Verify that the error message 'Invalid username and password.' is displayed on the page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Navigation from Login to Register Page",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/login'. 2. Locate and click the 'Sign up' link in the footer. 3. Verify that the browser is redirected to the '/register' page. 4. Verify that the heading 'Create Account' is visible on the page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Login Page after Logout Message",
+      "interaction": "Page load only",
+      "steps": "1. Simulate a logout action (e.g., by navigating to '/login?logout' or performing a logout from dashboard). 2. Verify that the success message 'You have been logged out.' is displayed on the login page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Login Page with Error Message",
+      "interaction": "Page load only",
+      "steps": "1. Navigate directly to '/login?error'. 2. Verify that the error message 'Invalid username and password.' is displayed on the page."
+    },
+    {
+      "route": "/login",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Login Page with Success Message",
+      "interaction": "Page load only",
+      "steps": "1. Navigate directly to '/login?success=Account created successfully!'. 2. Verify that the success message 'Account created successfully!' is displayed on the page."
+    },
+    {
+      "route": "/register",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Register Page Load",
+      "interaction": "Page load only",
+      "steps": "1. Navigate directly to '/register'. 2. Verify the page title is 'Register - Auth Demo'. 3. Verify the heading 'Create Account' and sub-heading 'Join us today' are visible. 4. Verify the presence of an input field with `id='username'` and `name='username'`. 5. Verify the presence of an input field with `id='password'` and `name='password'`. 6. Verify the presence of a button with text 'Create Account'. 7. Verify the presence of a link with text 'Sign in' that points to '/login'."
+    },
+    {
+      "route": "/register",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Successful User Registration",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/register'. 2. In the 'username' field, enter a unique username (e.g., 'newuser_123'). 3. In the 'password' field, enter a strong password (e.g., 'SecurePass123!'). 4. Click the 'Create Account' button. 5. Verify that the browser is redirected to the '/login' page. 6. Verify that a success message (e.g., 'Account created successfully!') is displayed on the login page."
+    },
+    {
+      "route": "/register",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Unsuccessful User Registration (e.g., existing username)",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/register'. 2. In the 'username' field, enter an existing username (e.g., 'user'). 3. In the 'password' field, enter a password (e.g., 'password'). 4. Click the 'Create Account' button. 5. Verify that the browser remains on the '/register' page (or redirects to '/register?error'). 6. Verify that an error message (e.g., 'Username already exists.') is displayed on the page."
+    },
+    {
+      "route": "/register",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Navigation from Register to Login Page",
+      "interaction": "Yes",
+      "steps": "1. Navigate to '/register'. 2. Locate and click the 'Sign in' link in the footer. 3. Verify that the browser is redirected to the '/login' page. 4. Verify that the heading 'Welcome Back' is visible on the page."
+    },
+    {
+      "route": "/register",
+      "type": "Thymeleaf Page",
+      "scenario": "Verify Register Page with Error Message",
+      "interaction": "Page load only",
+      "steps": "1. Navigate directly to '/register?error=Username already taken'. 2. Verify that the error message 'Username already taken' is displayed on the page."
+    }
+  ]
+}

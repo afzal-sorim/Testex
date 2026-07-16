@@ -1,0 +1,24 @@
+{
+    "active_provider": "gemini",
+    "providers": {
+        "groq": [
+            {
+                "id": "86faf3a9-439f-4076-8100-902ca2f753b2",
+                "name": "Testing1",
+                "key": "Bho0LwU7BRAQFRAYIC4hCAhBZ11dC25qZ3VSGAtsNiseMBMSHCIbNChWAAMyDFgHES95eEF7AjM=",
+                "is_active": true,
+                "is_default": true
+            }
+        ],
+        "openai": [],
+        "gemini": [
+            {
+                "id": "09fd5694-3244-4b8c-8e1a-9a654994d2dd",
+                "name": "Production_Key1",
+                "key": "IDhxMRBXJCdSLEUyQT05SlQYKRsLFBFkZWhvIyMOCgtaARhWAQs9JwAWIyMyZhEmKDJeanM=",
+                "is_active": true,
+                "is_default": true
+            }
+        ]
+    }
+}

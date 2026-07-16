@@ -6,6 +6,9 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    fontFamily: {
+      sans: ['Arial', 'sans-serif'],
+    },
     extend: {
       colors: {
         // PROVA Enterprise brand palette

@@ -4,7 +4,8 @@
 
 @layer base {
   body {
-    @apply transition-colors duration-300 font-sans antialiased;
+    @apply transition-colors duration-300 antialiased;
+    font-family: 'Inter', sans-serif;
     background-color: #F7F8FC;
     color: #101828;
   }

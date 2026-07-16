@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Functional Test Scope - Student_Mangement_System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        .method-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 800;
+            color: white;
+            min-width: 50px;
+        }
+        .method-GET { background-color: #2563EB; }
+        .method-POST { background-color: #16A34A; }
+        .method-PUT, .method-PATCH { background-color: #EA580C; }
+        .method-DELETE { background-color: #DC2626; }
+        .method-default { background-color: #64748B; }
+        
+        .endpoint-path {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: #F1F5F9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #334155;
+        }
+        
+        /* Fallback CSS for xhtml2pdf if tailwind classes fail */
+        @media print {
+            .bg-navy { background-color: #1E293B !important; color: white !important; }
+            .card { border: 1px solid #E2E8F0; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border-bottom: 1px solid #E2E8F0; padding: 12px; text-align: left; }
+            th { background-color: #F8FAFC; font-weight: 600; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="bg-[#1C2434] text-white p-8 rounded-2xl shadow-sm mb-6">
+        <h1 class="text-3xl font-extrabold mb-2">API Functional Test Scope</h1>
+        <p class="text-lg text-slate-300 font-medium mb-6">Student_Mangement_System</p>
+        
+        <div class="flex flex-wrap items-center gap-6 text-sm text-slate-400 font-medium">
+            <p>Generated: 2026-07-14 07:40:27 UTC</p>
+            <p>Testing Tool: <span class="text-slate-300">PLAYWRIGHT, SELENIUM</span></p>
+            <p>Controllers: <span class="text-slate-300">4</span></p>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+            <div class="text-3xl font-black text-slate-800 mb-1">74</div>
+            <div class="text-xs text-slate-500 font-semibold">API Endpoints to Test</div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+            <div class="text-3xl font-black text-blue-600 mb-1">21</div>
+            <div class="text-xs text-slate-500 font-semibold">GET Requests</div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+            <div class="text-3xl font-black text-green-600 mb-1">28</div>
+            <div class="text-xs text-slate-500 font-semibold">POST Requests</div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+            <div class="text-3xl font-black text-orange-500 mb-1">15</div>
+            <div class="text-xs text-slate-500 font-semibold">PUT/PATCH Requests</div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+            <div class="text-3xl font-black text-red-600 mb-1">10</div>
+            <div class="text-xs text-slate-500 font-semibold">DELETE Requests</div>
+        </div>
+    </div>
+
+    <!-- Validation Scope -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 mb-8">
+        <h2 class="text-lg font-bold text-slate-800 mb-6">Project-Specific API Validation Scope</h2>
+        <ul class="space-y-4">
+            
+            
+            <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="text-sm text-slate-600">All 74 API endpoints respond with correct HTTP status codes for happy-path requests</span>
+            </li>
+            <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="text-sm text-slate-600">POST endpoints validate required fields and return 201 Created with proper Location headers</span>
+            </li>
+            <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="text-sm text-slate-600">Response payloads conform to expected JSON schemas with correct data types</span>
+            </li>
+            <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="text-sm text-slate-600">Error scenarios return appropriate 4xx/5xx status codes with descriptive error messages</span>
+            </li>
+            
+        </ul>
+    </div>
+
+    <!-- Test Cases Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-12">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800">Test Case Details</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-slate-500 bg-slate-50 uppercase font-semibold">
+                    <tr>
+                        <th class="px-6 py-4">#</th>
+                        <th class="px-6 py-4">Method</th>
+                        <th class="px-6 py-4">Endpoint Path</th>
+                        <th class="px-6 py-4">Business Test Scenario</th>
+                        <th class="px-6 py-4">Validation Assertions</th>
+                        <th class="px-6 py-4">Source</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">1</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Successful user registration with valid credentials</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 201 Created status code', 'Validate response body contains user ID and success message', 'Verify user is created in the database (if accessible)', 'Assert no sensitive information like password is returned']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">2</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Registration with an already existing email address</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 409 Conflict or 400 Bad Request status code', 'Validate error message indicates duplicate email']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">3</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Registration with missing required fields (e.g., email, password)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies missing fields']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">4</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Registration with an invalid email format</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid email format']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">5</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Registration with a weak password (e.g., too short, common password)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates password policy violation']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">6</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/register</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Registration with excessively long input fields (e.g., name, email)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates field length violation']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">7</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Successful user login with valid credentials</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response body contains an authentication token (JWT, session ID)', 'Verify token has expected claims/structure', 'Assert no sensitive information like password is returned']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">8</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Login with incorrect password for an existing user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates invalid credentials']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">9</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Login with a non-existent email address</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates invalid credentials (to prevent user enumeration)']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">10</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Login with missing credentials (e.g., empty email or password)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies missing fields']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">11</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Login with an account that is locked or disabled</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized or 403 Forbidden status code', 'Validate error message indicates account status']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">12</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/login</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Rate limit test: Multiple failed login attempts</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 429 Too Many Requests status code after threshold', 'Verify subsequent requests are blocked for a period']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">13</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/logout</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Successful user logout with a valid token</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK or 204 No Content status code', 'Verify the authentication token is invalidated on the server side (subsequent requests with token fail)']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">14</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/auth/logout</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Logout attempt without an active session/token</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized or 400 Bad Request status code', 'Validate error message indicates no active session']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericAuthentication</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">15</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve all users as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response is a JSON array of user objects', 'Verify response contains expected number of users', 'Assert sensitive information (e.g., passwords) is not exposed']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">16</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to retrieve all users as a regular authenticated user (unauthorized)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">17</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to retrieve all users as an unauthenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates missing authentication']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">18</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a specific user by valid ID as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body matches the requested user's data", 'Verify JSON schema of the user object']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">19</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve own user profile by valid ID as an authenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body matches the authenticated user's data"]</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">20</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to retrieve another user's profile by ID as a regular authenticated user (IDOR)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 404 Not Found status code', 'Validate error message indicates access denied']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">21</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a user by a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates user not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">22</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a user by an invalid ID format (e.g., non-numeric, special characters)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid ID format']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">23</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create a new user with valid data as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 201 Created status code', "Validate response body contains the newly created user's ID and data", 'Verify user can be retrieved via GET /api/users/{id}']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">24</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new user with missing required fields as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies missing fields']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">25</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new user with duplicate unique fields (e.g., email) as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 409 Conflict or 400 Bad Request status code', 'Validate error message indicates duplicate entry']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">26</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new user as a regular authenticated user (unauthorized)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">27</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update an existing user's data with valid information as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response body reflects the updated user data', 'Verify changes are persisted by retrieving the user again']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">28</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update own user profile with valid information as an authenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response body reflects the updated user data']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">29</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to update another user's profile as a regular authenticated user (IDOR)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 404 Not Found status code', 'Validate error message indicates access denied']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">30</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update a user with a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates user not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">31</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update a user with invalid data types or formats</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies validation errors']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">32</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Mass Assignment: Attempt to update sensitive, non-updatable fields (e.g., 'isAdmin' flag)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code (if other fields are valid)', 'Verify that the sensitive field was NOT updated in the database', 'Assert no privilege escalation occurred']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">33</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Delete an existing user by valid ID as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 204 No Content or 200 OK status code', 'Verify user can no longer be retrieved via GET /api/users/{id} (should return 404)']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">34</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a non-existent user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates user not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">35</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a user by invalid ID format</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid ID format']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">36</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/users/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a user as a regular authenticated user (unauthorized)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericUserManagement</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">37</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve all products with no filters</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response is a JSON array of product objects', 'Verify response contains expected number of products (if any)']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">38</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve all products with pagination (e.g., page=1&size=10)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response contains the correct number of items per page', 'Verify pagination metadata (total items, total pages) is correct']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">39</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve products filtered by category and price range</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate all returned products match the specified filters']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">40</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a specific product by valid ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body matches the requested product's data", 'Verify JSON schema of the product object']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">41</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a product by a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates product not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">42</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a product by an invalid ID format</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid ID format']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">43</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create a new product with valid data as an authorized user (e.g., admin/seller)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 201 Created status code', "Validate response body contains the newly created product's ID and data", 'Verify product can be retrieved via GET /api/products/{id}']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">44</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new product with missing required fields</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies missing fields']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">45</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new product with duplicate unique fields (e.g., SKU)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 409 Conflict or 400 Bad Request status code', 'Validate error message indicates duplicate entry']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">46</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new product with negative price or stock quantity</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid value']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">47</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create a new product as an unauthenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates missing authentication']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">48</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update an existing product's data with valid information as an authorized user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response body reflects the updated product data', 'Verify changes are persisted by retrieving the product again']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">49</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update a product with a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates product not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">50</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update a product with invalid data types or formats</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message specifies validation errors']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">51</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to update a product as an unauthorized user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 401 Unauthorized status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">52</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Delete an existing product by valid ID as an authorized user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 204 No Content or 200 OK status code', 'Verify product can no longer be retrieved via GET /api/products/{id} (should return 404)']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">53</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a non-existent product</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates product not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">54</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a product by invalid ID format</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid ID format']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">55</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/products/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete a product as an unauthorized user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 401 Unauthorized status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericProductCatalog</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">56</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve all orders as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response is a JSON array of order objects', 'Verify response contains expected number of orders']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">57</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve own orders as an authenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response contains only orders belonging to the authenticated user', 'Verify JSON schema of order objects']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">58</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to retrieve all orders as an unauthenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates missing authentication']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">59</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve a specific order by valid ID as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body matches the requested order's data"]</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">60</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve own specific order by valid ID as an authenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body matches the requested order's data"]</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">61</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to retrieve another user's order by ID as a regular authenticated user (IDOR)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 404 Not Found status code', 'Validate error message indicates access denied']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">62</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-GET">GET</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Retrieve an order by a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates order not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">63</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create a new order with valid product IDs and quantities</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 201 Created status code', "Validate response body contains the newly created order's ID and details", 'Verify product stock levels are decremented correctly', 'Verify order can be retrieved via GET /api/orders/{id}']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">64</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create an order with a non-existent product ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid product']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">65</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create an order with insufficient product stock</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request or 409 Conflict status code', 'Validate error message indicates out of stock']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">66</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Create an order with invalid quantity (e.g., zero, negative)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request status code', 'Validate error message indicates invalid quantity']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">67</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-POST">POST</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to create an order as an unauthenticated user</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 401 Unauthorized status code', 'Validate error message indicates missing authentication']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">68</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update an order status to 'shipped' as an administrator</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', 'Validate response body reflects the updated order status', 'Verify status change is persisted']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">69</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Cancel own order as an authenticated user (if order is in cancellable state)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 200 OK status code', "Validate response body reflects the 'cancelled' status", 'Verify product stock levels are incremented back correctly']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">70</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to update an order with an invalid status transition (e.g., 'shipped' to 'pending')</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 400 Bad Request or 409 Conflict status code', 'Validate error message indicates invalid status transition']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">71</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to update another user's order as a regular authenticated user (IDOR)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 404 Not Found status code', 'Validate error message indicates access denied']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">72</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-PUT">PUT</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Update an order with a non-existent ID</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 404 Not Found status code', 'Validate error message indicates order not found']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">73</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Delete an order as an administrator (for cleanup/testing purposes)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 204 No Content or 200 OK status code', 'Verify order can no longer be retrieved']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-900">74</td>
+                        <td class="px-6 py-4">
+                            <span class="method-badge method-DELETE">DELETE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="endpoint-path">/api/orders/{id}</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 max-w-sm">Attempt to delete an order as a regular authenticated user (unauthorized)</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">['Assert 403 Forbidden or 401 Unauthorized status code', 'Validate error message indicates insufficient permissions']</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-medium">GenericOrderProcessing</td>
+                    </tr>
+                    
+                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center pb-8">
+        <p class="text-xs text-slate-400">This document outlines project-specific API functional test automation for Student_Mangement_System.<br>Generated dynamically from source code analysis — JavaAPEX Functional Test Pipeline</p>
+    </footer>
+
+</body>
+</html>
