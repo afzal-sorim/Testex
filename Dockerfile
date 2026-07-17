@@ -27,8 +27,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
+# Set temp directory to /var/tmp to prevent running out of space in /tmp ramdisk
+ENV TMPDIR=/var/tmp
+
 # Copy backend requirements.txt first to leverage Docker cache
 COPY python_backend/requirements.txt .
+
+# Install CPU-only PyTorch first to prevent downloading 2GB+ of unused CUDA packages
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
