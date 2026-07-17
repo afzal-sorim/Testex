@@ -8,7 +8,7 @@ RUN npm install
 
 # Copy source and build
 COPY frontend/ ./
-RUN echo "VITE_API_URL=/api" > frontend/.env
+RUN echo "VITE_API_URL=/api" > .env
 RUN npm run build
 
 # Stage 2: Serve using Nginx
