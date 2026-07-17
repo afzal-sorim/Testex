@@ -3,10 +3,12 @@ import re
 import json
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
+from typing import Dict, Any
 from fastapi import APIRouter, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 import httpx
+from pydantic import BaseModel
 from app.models import (
     AnalyzeRequest, AnalysisResponse,
     MigrateRequest, MigrationResponse, TaskResponse,
@@ -23,6 +25,7 @@ from app.services.rag_service import rag_service
 from app.services.analysis_service import analysis_service
 from app.services.migration_service import migration_service
 from app.services.code_conversion_service import code_conversion_service
+from app.services.session_service import session_service
 from app.services.report_service import report_service
 from app.services.execution_service import execution_service
 from app.ai.ai_factory import AIFactory
@@ -30,6 +33,39 @@ import asyncio
 import subprocess
 
 router = APIRouter()
+
+class CreateSessionRequest(BaseModel):
+    repoUrl: str = ""
+    localPath: str = ""
+
+class UpdateSessionRequest(BaseModel):
+    updates: Dict[str, Any]
+
+@router.post("/sessions")
+async def create_session(request: CreateSessionRequest):
+    try:
+        session_id = session_service.create_session(request.repoUrl, request.localPath)
+        return {"sessionId": session_id}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/sessions/{session_id}")
+async def get_session(session_id: str):
+    session = session_service.get_session(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    return session
+
+@router.patch("/sessions/{session_id}")
+async def update_session(session_id: str, request: UpdateSessionRequest):
+    try:
+        updated = session_service.update_session(session_id, request.updates)
+        return updated
+    except ValueError as e:
+        return JSONResponse(status_code=404, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 PREVIEW_PROXY_PREFIX = "/api/run/preview"
 
 
@@ -119,6 +155,10 @@ async def analyze(request: AnalyzeRequest):
     if request.provider:
         app_config.ai_provider = request.provider
         
+    session_id = request.sessionId
+    if not session_id:
+        session_id = session_service.create_session(request.repoUrl, request.localPath)
+        
     response = analysis_service.analyze_repository(
         request.repoUrl, 
         request.apiKey, 
@@ -126,7 +166,16 @@ async def analyze(request: AnalyzeRequest):
         request.githubToken, 
         request.localPath
     )
-    save_report_to_file("last_analysis.json", response.model_dump())
+    
+    response.sessionId = session_id
+    
+    # Save the analysis result into the session
+    session_service.update_session(session_id, {
+        "analysisResult": response.model_dump(),
+        "workflowState": {"analysisCompleted": True}
+    })
+    
+    save_report_to_file("last_analysis.json", response.model_dump()) # keeping for backward compatibility if needed, but not strictly required
     return response
 
 from fastapi.responses import Response
@@ -398,7 +447,9 @@ async def get_repository_tree(repositoryId: str):
         tree = []
         try:
             for entry in sorted(os.scandir(dir_path), key=lambda e: (not e.is_dir(), e.name)):
-                if entry.name in [".git", "node_modules", ".idea", ".vscode", "__pycache__", ".venv", "venv", ".next"]:
+                if entry.name in [".git", "node_modules", ".idea", ".vscode", "__pycache__", ".venv", "venv", ".next", "playwright-report", "test-results"]:
+                    continue
+                if entry.name.endswith(".zip"):
                     continue
                 
                 rel_path = str(Path(entry.path).relative_to(project_dir)).replace("\\", "/")
@@ -564,24 +615,6 @@ from app.services.project_runner_service import project_runner_service
 
 @router.post("/run/start", response_model=RunStatusResponse)
 async def start_project(request: RunStartRequest, http_request: Request):
-    # Guard: Check if Repository Analysis is complete
-    analysis_completed = False
-    try:
-        from app.config import app_config
-        import json
-        cache_file = app_config.workspace_directory / "analysis_cache.json"
-        if cache_file.exists():
-            cache = json.loads(cache_file.read_text())
-            for key, cached_data in cache.items():
-                if request.repoName in key and cached_data.get("fullBrdReport"):
-                    analysis_completed = True
-                    break
-    except Exception:
-        pass
-        
-    if not analysis_completed:
-        return JSONResponse(status_code=403, content={"error": "Repository Analysis must be completed before running the project."})
-
     await project_runner_service.start_project(request.repoName)
     return attach_preview_url(project_runner_service.get_status(request.repoName), http_request, request.repoName)
 

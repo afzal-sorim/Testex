@@ -173,7 +173,7 @@ export default function MigrationCenter({
 
  useEffect(() => {
  let cleanupPoll = () => {};
- if (repoName && result && result.buildStatus === 'Build Success') {
+ if (repoName) {
  const checkInitialStatus = async () => {
  try {
  const data = await getProjectStatus(repoName);
@@ -313,8 +313,6 @@ export default function MigrationCenter({
  } else {
  setResult(data);
  setTimeTaken(duration);
- localStorage.setItem('last_migration_time', JSON.stringify(duration));
- localStorage.setItem('last_migration', JSON.stringify(data));
 
  setPlaywrightResult(null);
  const repoNameForPw = repoUrl.split('/').pop().replace('.git', '');
@@ -351,11 +349,6 @@ export default function MigrationCenter({
  };
  const updatedHistory = [historyEntry, ...history].slice(0, 20);
  setHistory(updatedHistory);
- localStorage.setItem('migration_history', JSON.stringify(updatedHistory));
- 
- const stats = JSON.parse(localStorage.getItem('assistant_stats') || '{"reposAnalyzed":0,"migrationsRun":0,"filesConverted":0}');
- stats.migrationsRun += 1;
- localStorage.setItem('assistant_stats', JSON.stringify(stats));
  }
  setLoading(false);
  } else if (statusData.status === 'FAILURE') {
@@ -380,7 +373,6 @@ export default function MigrationCenter({
 
  const clearHistory = () => {
  setHistory([]);
- localStorage.removeItem('migration_history');
  };
 
  if (!workflowState?.analysisCompleted) {
@@ -454,7 +446,7 @@ export default function MigrationCenter({
     disabled={!(runnerStatus === 'RUNNING' || runnerStatus === 'RUNNING_API' || runnerStatus === 'SUCCESS' || runnerStatus === 'SUCCESSFUL')}
     className="flex items-center gap-2 px-6 py-3 bg-[#5B5FF6] hover:bg-[#4F54D8] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-card transition-all"
   >
-    Continue to AI Test Recommendation <ArrowRight size={18} />
+    Continue to Strategies <ArrowRight size={18} />
   </button>
  </div>
 

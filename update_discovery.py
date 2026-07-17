@@ -1,5 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Info, RefreshCw, CheckCircle2, Share2, Target, Clock, FileCode2, GitBranch, Play, CheckCircle, AlertTriangle, ShieldAlert, BookOpen, ArrowRight, Shield, Code, Server, Zap, Search, Activity, Package, List, Database, Globe, Layers, FlaskConical, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Terminal, Loader2, Link as LinkIcon, Download, Layout, LayoutGrid } from 'lucide-react';
+import os
+import re
+
+discovery_path = r"c:\Users\ST-Balakumaran\Downloads\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\frontend\src\pages\Discovery.jsx"
+
+# We will read the file and do string replacements or rewrite the whole file.
+# Since the file is large (1320 lines), a complete rewrite is better to ensure correctness.
+# I will generate the complete content of Discovery.jsx.
+
+content = """import React, { useState, useEffect } from 'react';
+import { GitBranch, Play, CheckCircle, AlertTriangle, ShieldAlert, BookOpen, ArrowRight, Shield, Code, Server, Zap, Search, Activity, Package, List, Database, Globe, Layers, FlaskConical, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Terminal, Loader2, Link as LinkIcon, Download, Layout, LayoutGrid } from 'lucide-react';
 import { analyzeRepository, getPlaywrightStatus, getRepositoryTree, getRepositoryFileContent, startProject } from '../api';
 import ProjectRunner from './ProjectRunner';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
@@ -366,28 +375,16 @@ export default function Discovery({
     ];
  };
  
- 
-  const workflowSteps = getWorkflowSteps();
-
-  // --- Dynamic Existing Test Case Logic ---
-  const existingCount = result?.existingTestCount || 0;
-  const existingPassed = result?.existingTestPassed || 0;
-  const testingFramework = result?.existingTestTypes || 'Not Detected';
-  
-  const automatedCases = existingPassed;
-  const manualCases = Math.max(0, existingCount - automatedCases);
-  const automatedPercent = existingCount > 0 ? ((automatedCases / existingCount) * 100).toFixed(2) : '0.00';
-  const manualPercent = existingCount > 0 ? ((manualCases / existingCount) * 100).toFixed(2) : '0.00';
-
+ const workflowSteps = getWorkflowSteps();
 
  return (
  <div className="space-y-6 animate-fadeIn pb-12">
   {/* Banner / Input Area */}
-  {(!result?.projectType || error || loading) && (
-  <div className="p-5 bg-white rounded-3xl border border-[#EAECF0] relative z-10 shadow-sm mt-4">
-  {(!result?.projectType || error) && (
+  {(!repoUrl || error || loading) && (
+  <div className="p-6 bg-white rounded-3xl border border-[#EAECF0] relative z-10 shadow-sm mt-4">
+  {(!repoUrl || error) && (
   <>
- <div className="flex items-center gap-5 mb-4">
+ <div className="flex items-center gap-4 mb-4">
  <label className="flex items-center gap-2 text-sm cursor-pointer text-[#344054] font-medium">
  <input 
  type="radio" 
@@ -446,7 +443,7 @@ export default function Discovery({
  type="text"
  value={localPath}
  onChange={(e) => setLocalPath(e.target.value)}
- placeholder="Absolute path (e.g., C:\Projects\MyJavaApp)"
+ placeholder="Absolute path (e.g., C:\\Projects\\MyJavaApp)"
  required={sourceType === 'local'}
  disabled={loading}
  className="flex-1 px-4 py-3 rounded-2xl border border-[#EAECF0] bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all text-sm"
@@ -493,107 +490,34 @@ export default function Discovery({
  {result?.projectType && !loading && (
    <div className="space-y-6 mt-4">
       
-      {/* Existing Test Coverage Analysis (Vertical Card Layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md flex flex-col relative overflow-hidden">
-          <div className="p-5 flex items-center justify-between border-b border-[#EAECF0]">
-            <h3 className="text-sm font-bold text-[#101828] flex items-center gap-2">
-              Existing Test Case Coverage
-              <Info size={14} className="text-[#98A2B3] cursor-help" />
-            </h3>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#D0D5DD] rounded-lg text-[10px] font-bold text-[#344054] hover:bg-slate-50 transition-colors shadow-sm">
-              <RefreshCw size={12} /> Refresh
-            </button>
-          </div>
-          
-          <div className="flex flex-col flex-1 divide-y divide-[#EAECF0]">
-            {/* Total */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <FileText size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Total Existing Test Cases</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#101828]">{existingCount}</span>
-              </div>
-            </div>
-            
-            {/* Automated */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <CheckCircle2 size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Automated Test Cases</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#101828]">{automatedCases} <span className="text-[11px] font-semibold text-[#667085]">({automatedPercent}%)</span></span>
-              </div>
-            </div>
-            
-            {/* Manual */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <Share2 size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Manual Test Cases</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#101828]">{manualCases} <span className="text-[11px] font-semibold text-[#667085]">({manualPercent}%)</span></span>
-              </div>
-            </div>
-            
-            {/* Coverage */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
-                  <Target size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Test Case Coverage</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#101828]">{(result?.coveragePrediction || 0)}%</span>
-              </div>
-            </div>
-
-            {/* Last Executed */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
-                  <Clock size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Last Executed On</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black text-[#101828]">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}</span>
-              </div>
-            </div>
-            
-            {/* Framework */}
-            <div className="p-4 flex items-center justify-between group hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                  <FileCode2 size={16} />
-                </div>
-                <span className="text-xs font-bold text-[#344054]">Testing Framework Detected</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black text-[#101828]">{testingFramework}</span>
-              </div>
-            </div>
-
-          </div>
+      {/* Existing Test Coverage Analysis */}
+      <div>
+        <h3 className="text-[13px] font-bold text-[#101828] mb-3">Existing Test Coverage Analysis</h3>
+        <div className="grid grid-cols-4 gap-4">
+           <div className="bg-white rounded-xl border border-[#EAECF0] p-4 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mb-2">Total Tests</span>
+              <span className="text-2xl font-black text-[#101828]">{result?.existingTestCount || 0}</span>
+           </div>
+           <div className="bg-emerald-50 rounded-xl border border-emerald-100 p-4 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2">Passed</span>
+              <span className="text-2xl font-black text-emerald-600">{result?.existingTestPassed || 0}</span>
+           </div>
+           <div className="bg-rose-50 rounded-xl border border-rose-100 p-4 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-2">Failed</span>
+              <span className="text-2xl font-black text-rose-600">{result?.existingTestFailed || 0}</span>
+           </div>
+           <div className="bg-[#F4F5FF] rounded-xl border border-[#E0E2FE] p-4 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-[10px] font-bold text-[#5B5FF6] uppercase tracking-wider mb-2">Testing Types</span>
+              <span className="text-sm font-bold text-[#5B5FF6]">{result?.existingTestTypes || 'Not Detected'}</span>
+           </div>
         </div>
       </div>
 
       {/* Main Split View */}
-      <div className="flex flex-col xl:flex-row gap-5 min-h-[480px] xl:h-[550px]">
+      <div className="flex flex-col xl:flex-row gap-6 h-[480px]">
          
          {/* Repository Explorer & Viewer */}
-         <div className={`flex flex-col lg:flex-row bg-white rounded-2xl border border-[#EAECF0] shadow-sm overflow-hidden shrink-0 transition-all duration-300 ${selectedFile ? 'xl:w-[45%]' : 'xl:w-[25%]'}`}>
+         <div className={`flex flex-col lg:flex-row bg-white rounded-2xl border border-[#EAECF0] shadow-sm overflow-hidden shrink-0 transition-all duration-300 ${selectedFile ? 'xl:w-[55%]' : 'xl:w-[30%]'}`}>
             {/* Tree */}
             <div className={`flex flex-col h-full ${selectedFile ? 'w-full lg:w-2/5 border-r border-[#EAECF0]' : 'w-full'}`}>
                <div className="p-4 border-b border-[#EAECF0] bg-white">
@@ -622,7 +546,7 @@ export default function Discovery({
             
             {/* Viewer */}
             {selectedFile && (
-               <div className="flex flex-col w-full lg:w-3/5 bg-[#1E1E1E] h-[400px] xl:h-full relative w-full">
+               <div className="flex flex-col w-full lg:w-3/5 bg-[#1E1E1E] h-full relative">
                   <div className="px-4 py-2.5 bg-[#252526] border-b border-[#333] flex justify-between items-center absolute top-0 w-full z-10">
                      <div className="flex items-center gap-2 overflow-hidden">
                         <FileCode size={14} className="text-emerald-400 shrink-0" />
@@ -670,7 +594,7 @@ export default function Discovery({
                </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-20">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar pb-20">
                {activeSummaryTab === 'brd' ? (
                   <div className="space-y-6">
                      <div>
@@ -829,7 +753,7 @@ export default function Discovery({
       {/* Business Workflow (High Level) */}
       <div className="bg-white rounded-2xl border border-[#EAECF0] p-5 shadow-sm">
          <h3 className="text-[13px] font-bold text-[#101828] mb-6">Business Workflow (High Level)</h3>
-         <div className="flex items-center gap-5 overflow-x-auto pb-4 custom-scrollbar">
+         <div className="flex items-center gap-4 overflow-x-auto pb-4 custom-scrollbar">
             {workflowSteps.map((step, idx) => (
                <React.Fragment key={idx}>
                   <div className="flex flex-col items-center min-w-[120px]">
@@ -870,3 +794,8 @@ export default function Discovery({
  </div>
  );
 }
+"""
+
+with open(discovery_path, "w", encoding="utf-8") as f:
+    f.write(content)
+print("Discovery.jsx updated successfully.")

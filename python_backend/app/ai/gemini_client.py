@@ -7,7 +7,7 @@ class TokenExhaustedError(Exception):
 
 class GeminiClient:
     def __init__(self):
-        self.model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+        self.model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
     
     def generate(self, prompt: str, system_instruction: str = None, api_key: str = None, model_name: str = None) -> str:
         key = api_key or os.getenv("GEMINI_API_KEY")
@@ -17,7 +17,7 @@ class GeminiClient:
         client = genai.Client(api_key=key)
         active_model = model_name or self.model_name
         if "llama" in active_model.lower() or "gpt" in active_model.lower():
-            active_model = "gemini-2.5-flash"
+            active_model = "gemini-2.0-flash"
         
         config_kwargs = {"temperature": 0.2}
         if system_instruction:

@@ -8,6 +8,7 @@ class AnalyzeRequest(BaseModel):
     apiKey: Optional[str] = None
     provider: Optional[str] = None
     modelName: Optional[str] = None
+    sessionId: Optional[str] = None
 
 class ValidateRepoRequest(BaseModel):
     repoUrl: str
@@ -71,6 +72,20 @@ class AnalysisResponse(BaseModel):
     fullBrdReport: Optional[FullBrdReport] = None
     errorMessage: Optional[str] = None
     usedProvider: Optional[str] = None
+    sessionId: Optional[str] = None
+    existingTestCount: int = 0
+    existingTestPassed: int = 0
+    existingTestFailed: int = 0
+    existingTestTypes: Optional[str] = "Not Detected"
+    recommendedTestingTool: Optional[str] = "Playwright"
+    recommendedToolReasons: List[str] = []
+    coveragePrediction: int = 0
+    estimatedUiTests: int = 0
+    estimatedApiTests: int = 0
+    testScenarios: int = 0
+    testSteps: int = 0
+    estimatedRuntimeMins: int = 0
+    confidenceScore: float = 0.0
 
 class MigrationResponse(BaseModel):
     success: bool

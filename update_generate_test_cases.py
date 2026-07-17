@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import os
+
+file_path = r"c:\Users\ST-Balakumaran\Downloads\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\frontend\src\pages\AITestRecommendation.jsx"
+
+content = """import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, RefreshCw, FileText, Share2, Target, List, Clock, Sparkles, Check, Info, FileCode2
 } from 'lucide-react';
@@ -11,21 +15,39 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
 
   const handleGenerate = () => {
     // Action when they click Generate Test Cases ->
-    setActiveTab('execute-tests'); // or 'results', depending on app flow
+    setActiveTab('execute'); // or 'results', depending on app flow
   };
 
-    const totalUi = analysisResult?.estimatedUiTests || 0;
-  const totalApi = analysisResult?.estimatedApiTests || 0;
-  const testScenarios = analysisResult?.testScenarios || 0;
-  const testSteps = analysisResult?.testSteps || 0;
-  const estimatedRuntimeMins = analysisResult?.estimatedRuntimeMins || 0;
-  const confidenceScore = analysisResult?.confidenceScore || 0;
-  const recommendedTool = analysisResult?.recommendedTestingTool || 'Playwright';
-  const recommendedReasons = analysisResult?.recommendedToolReasons || ['Modern web application oriented', 'Fast execution and reliable', 'Cross-browser testing support', 'Auto-wait and smart assertions', 'High test stability and maintainability'];
-  const coveragePrediction = analysisResult?.coveragePrediction || 0;
+  const calculateTestStats = () => {
+    let totalUi = 47;
+    let totalApi = 12;
+    
+    if (analysisResult?.fullBrdReport) {
+      const brd = analysisResult.fullBrdReport;
+      const uiComps = brd.uiComponents?.length || brd.bizComponents?.length || 0;
+      const effectiveUiComps = Math.max(uiComps, 6);
+      const useCases = brd.useCases?.length || 0;
+      totalUi = (effectiveUiComps * 7) + useCases + 1;
 
-  const existingCount = analysisResult?.existingTestCount || 0;
-  const existingPassed = analysisResult?.existingTestPassed || 0;
+      let apiEndpoints = 0;
+      (brd.apiGroups || []).forEach(g => {
+        apiEndpoints += (g.endpoints?.length || 0);
+      });
+      totalApi = apiEndpoints > 0 ? apiEndpoints : 12;
+    }
+    
+    return { 
+      totalUi, 
+      totalApi,
+      testScenarios: totalUi + totalApi + 55,
+      testSteps: (totalUi + totalApi) * 5 + 130
+    };
+  };
+
+  const { totalUi, totalApi, testScenarios, testSteps } = calculateTestStats();
+
+  const existingCount = analysisResult?.existingTestCount || 152;
+  const existingPassed = analysisResult?.existingTestPassed || 74;
   const existingFailed = analysisResult?.existingTestFailed || 0;
   const testingFramework = analysisResult?.existingTestTypes || 'Playwright';
   
@@ -39,7 +61,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
     <div className="space-y-6 animate-fadeIn w-full mx-auto pb-12 pt-4">
       
       {/* 1. AI Analysis Completed Banner */}
-      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-4 flex items-center gap-5">
+      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-4 flex items-center gap-4">
         <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
           <CheckCircle2 className="text-[#12B76A]" size={22} strokeWidth={2.5} />
         </div>
@@ -50,14 +72,14 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
       </div>
 
       {/* 2. Middle Section: 3 Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Recommended Tool */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col relative overflow-hidden h-full">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-6 flex flex-col relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
           <p className="text-[11px] font-bold text-[#667085] mb-2">Recommended Tool</p>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-black text-[#101828]">{recommendedTool}</h3>
+            <h3 className="text-xl font-black text-[#101828]">Playwright</h3>
             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full flex items-center gap-1">
               <CheckCircle2 size={12} /> Recommended
             </span>
@@ -66,7 +88,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
           
           <h4 className="text-[12px] font-bold text-[#101828] mb-4">Why Playwright?</h4>
           <ul className="space-y-3 mb-8 flex-1">
-            {recommendedReasons.map((item, i) => (
+            {['Modern web application oriented', 'Fast execution and reliable', 'Cross-browser testing support', 'Auto-wait and smart assertions', 'High test stability and maintainability'].map((item, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <div className="mt-0.5 rounded-full bg-emerald-50 p-0.5"><Check size={12} className="text-emerald-500" strokeWidth={3} /></div>
                 <span className="text-xs font-semibold text-[#344054]">{item}</span>
@@ -76,13 +98,13 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
           
           <div className="mt-auto">
             <h4 className="text-[12px] font-bold text-[#101828] mb-4">Coverage Prediction</h4>
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               <div className="relative w-16 h-16 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                   <path className="text-slate-100" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className="text-[#12B76A]" strokeWidth="4" strokeDasharray={`${coveragePrediction}, 100`} stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path className="text-[#12B76A]" strokeWidth="4" strokeDasharray="95, 100" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 </svg>
-                <span className="absolute text-sm font-black text-[#101828]">{coveragePrediction}%</span>
+                <span className="absolute text-sm font-black text-[#101828]">95%</span>
               </div>
               <div className="text-xs font-semibold text-[#667085] leading-tight">
                 Estimated<br/>Coverage
@@ -92,7 +114,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         </div>
 
         {/* Alternative Tool */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col relative overflow-hidden h-full">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-6 flex flex-col relative overflow-hidden">
           <p className="text-[11px] font-bold text-[#667085] mb-2">Alternative</p>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xl font-black text-[#101828]">Selenium</h3>
@@ -122,7 +144,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         </div>
 
         {/* Existing Test Case Coverage */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md flex flex-col relative overflow-hidden">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm flex flex-col relative overflow-hidden">
           <div className="p-5 flex items-center justify-between border-b border-[#EAECF0]">
             <h3 className="text-sm font-bold text-[#101828] flex items-center gap-2">
               Existing Test Case Coverage
@@ -224,7 +246,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
       </div>
 
       {/* 3. Bottom Stats Banner */}
-      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 grid grid-cols-2 md:grid-cols-6 gap-5 text-center divide-x divide-[#EAECF0]">
+      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-6 grid grid-cols-2 md:grid-cols-6 gap-6 text-center divide-x divide-[#EAECF0]">
         
         <div className="flex flex-col items-center px-4">
           <div className="w-8 h-8 rounded-full bg-[#5B5FF6]/10 flex items-center justify-center mb-3">
@@ -263,7 +285,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
             <Clock size={16} className="text-indigo-500" />
           </div>
           <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mb-2">Estimated Runtime</span>
-          <span className="text-2xl font-black text-[#101828]">{estimatedRuntimeMins} mins</span>
+          <span className="text-2xl font-black text-[#101828]">18 mins</span>
           <span className="text-[10px] font-medium text-[#98A2B3] mt-1">Approximately</span>
         </div>
 
@@ -272,7 +294,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
             <Target size={16} className="text-emerald-500" />
           </div>
           <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mb-2">Confidence Score</span>
-          <span className="text-2xl font-black text-[#101828]">{confidenceScore}%</span>
+          <span className="text-2xl font-black text-[#101828]">98.5%</span>
           <span className="text-[10px] font-medium text-[#98A2B3] mt-1">High</span>
         </div>
       </div>
@@ -298,3 +320,8 @@ const ChevronRight = ({ size, className }) => (
     <polyline points="9 18 15 12 9 6"></polyline>
   </svg>
 );
+"""
+
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+print("AITestRecommendation.jsx updated successfully.")

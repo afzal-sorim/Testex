@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, RefreshCw, Box, Search, Play, FileText, CheckCircle, Clock, Database, Layers, ArrowRight,
   Shield, Code, Link, Cpu, BarChart, ExternalLink, Moon, Sun, 
-  Settings as SettingsIcon, LogOut, Check, ChevronDown, Download, AlertCircle, X, CheckSquare, Sparkles, Server, Map, GitMerge, List, BookOpen, Key, Eye, Layout, File, Target, FlaskConical 
+  Settings as SettingsIcon, LogOut, Check, ChevronDown, Download, AlertCircle, X, CheckSquare, Sparkles, Server, Map, GitMerge, List, BookOpen, Key, Eye, Layout, File, Target, FlaskConical, HelpCircle, Bell 
 } from 'lucide-react';
-import { getStatus, getWorkflowStatus } from './api';
-import { getLocalJSON } from './utils/localData';
+import { getStatus, getWorkflowStatus, getSession } from './api';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import { motion } from 'framer-motion';
@@ -19,6 +18,7 @@ import Settings from './pages/Settings';
 import ChatbotWidget from './components/ChatbotWidget';
 import Login from './pages/Login';
 import AITestRecommendation from './pages/AITestRecommendation';
+import TestResults from './pages/TestResults';
 import Summary from './pages/Summary';
 
 // Design Tokens for App
@@ -61,56 +61,28 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
 
-  // Helper to get from localstorage safely
-  const getLocalItem = (key, fallback) => {
-    try {
-      const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
-    } catch (e) {
-      return fallback;
-    }
-  };
+  const [sessionId, setSessionId] = useState(null);
+  const [sessionData, setSessionData] = useState(null);
 
   // Repository Analysis Page states
-  const [analysisResult, setAnalysisResult] = useState(() => getLocalItem('last_analysis', null));
-  const [analysisRepoUrl, setAnalysisRepoUrl] = useState(() => {
-    const last = getLocalItem('last_analysis', null);
-    return last ? last.repoUrl : '';
-  });
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisRepoUrl, setAnalysisRepoUrl] = useState('');
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
   const [analysisStatusText, setAnalysisStatusText] = useState('');
   const [analysisElapsedTime, setAnalysisElapsedTime] = useState(0);
-  const [analysisTimeTaken, setAnalysisTimeTaken] = useState(() => getLocalItem('last_analysis_time', null));
-
-  // Ticking effect for repository analysis loading timer
-  useEffect(() => {
-    let intervalId;
-    if (analysisLoading) {
-      const startTime = Date.now();
-      setAnalysisElapsedTime(0);
-      intervalId = setInterval(() => {
-        setAnalysisElapsedTime(((Date.now() - startTime) / 1000).toFixed(1));
-      }, 100);
-    }
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [analysisLoading]);
+  const [analysisTimeTaken, setAnalysisTimeTaken] = useState(null);
 
   // Migration Center Page states
-  const [migrationResult, setMigrationResult] = useState(() => getLocalItem('last_migration', null));
-  const [migrationRepoUrl, setMigrationRepoUrl] = useState(() => {
-    const last = getLocalItem('last_analysis', null);
-    return last ? last.repoUrl : '';
-  });
+  const [migrationResult, setMigrationResult] = useState(null);
+  const [migrationRepoUrl, setMigrationRepoUrl] = useState('');
   const [migrationTargetVersion, setMigrationTargetVersion] = useState('21');
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [migrationError, setMigrationError] = useState(null);
   const [migrationStatusText, setMigrationStatusText] = useState('');
-  const [migrationHistory, setMigrationHistory] = useState(() => getLocalItem('migration_history', []));
+  const [migrationHistory, setMigrationHistory] = useState([]);
   const [migrationElapsedTime, setMigrationElapsedTime] = useState(0);
-  const [migrationTimeTaken, setMigrationTimeTaken] = useState(() => getLocalItem('last_migration_time', null));
+  const [migrationTimeTaken, setMigrationTimeTaken] = useState(null);
 
   // Ticking effect for migration loading timer
   useEffect(() => {
@@ -150,13 +122,32 @@ export default function App() {
 
   const [workflowState, setWorkflowState] = useState({ analysisCompleted: false, runnerCompleted: false });
 
+  // Session Hydration
   useEffect(() => {
-    // Load stats and history for KPI cards
-    const localStats = getLocalJSON('assistant_stats', { reposAnalyzed: 0, migrationsRun: 0, filesConverted: 0 });
-    setStats(localStats);
-    const history = getLocalJSON('migration_history', []);
-    setMigrations(history);
+    if (!sessionId) return;
+    getSession(sessionId).then(data => {
+      if (data) {
+        setSessionData(data);
+        if (data.analysisResult) setAnalysisResult(data.analysisResult);
+        if (data.repoUrl) {
+          setAnalysisRepoUrl(data.repoUrl);
+          setMigrationRepoUrl(data.repoUrl);
+        }
+        if (data.workflowState) {
+          setWorkflowState(prev => ({
+             ...prev, 
+             analysisCompleted: data.workflowState.analysisCompleted || prev.analysisCompleted,
+             runnerCompleted: data.workflowState.runnerCompleted || prev.runnerCompleted
+          }));
+        }
+        if (data.migrationResult) setMigrationResult(data.migrationResult);
+        if (data.stats) setStats(data.stats);
+        if (data.migrations) setMigrations(data.migrations);
+      }
+    }).catch(console.error);
+  }, [sessionId, activeTab]);
 
+  useEffect(() => {
     const fetchStatus = () => {
       getStatus()
         .then(data => setStatus(data))
@@ -188,48 +179,32 @@ export default function App() {
     return () => clearInterval(interval);
   }, [analysisRepoUrl, activeTab]);
 
-  // Compute KPI values
-  const normalizedMigrations = migrations.map(m => {
-    if (m.repoUrl && !m.repo) {
-      const repoName = m.repoUrl.split('/').pop()?.replace('.git', '') || m.repoUrl;
-      const statusStr = (m.success || m.buildStatus === 'Success' || m.buildStatus === 'Build Success') ? 'Success' : (m.buildStatus === 'Running' || m.buildStatus === 'PENDING' ? 'Running' : 'Failed');
-      return {
-        ...m,
-        repo: repoName,
-        status: statusStr,
-      };
-    }
-    return m;
-  });
-
-  const applied = normalizedMigrations.filter(m => m.status === 'Success').length || 0;
-  const failed = normalizedMigrations.filter(m => m.status === 'Failed').length || 0;
-  const inProgress = normalizedMigrations.filter(m => m.status === 'Running').length || 0;
-  const total = applied + failed + inProgress;
-  const successRate = total > 0 ? Math.round((applied / total) * 100) : 0;
-
-  // Wizard Nodes
+  // Wizard Nodes mapped for Sidebar
   const wizardNodes = [
-    { id: 'dashboard', label: 'Connect', icon: <Home size={18} /> },
-    { id: 'discovery', label: 'Discovery', icon: <Search size={18} /> },
-    { id: 'runner', label: 'Project Runner', icon: <RefreshCw size={18} /> },
-    { id: 'test-recommendation', label: 'AI Test Recommendation', icon: <FlaskConical size={18} /> },
-    { id: 'results', label: 'Testing', icon: <Layers size={18} /> },
-    { id: 'summary', label: 'Summary', icon: <FileText size={18} /> }
+    { id: 'dashboard', label: 'Connect Repository', shortLabel: 'Connect Repository' },
+    { id: 'discovery', label: 'Project Discovery', shortLabel: 'Project Discovery' },
+    { id: 'test-recommendation', label: 'Generate Test Cases', shortLabel: 'Generate Test Cases' },
+    { id: 'execute-tests', label: 'Execute Tests', shortLabel: 'Execute Tests' },
+    { id: 'results', label: 'Test Results', shortLabel: 'View Results' },
+    { id: 'summary', label: 'Reports & Downloads', shortLabel: 'Download Reports' }
   ];
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard 
-          setActiveTab={setActiveTab} 
-          setAnalysisRepoUrl={setAnalysisRepoUrl}
-          setAnalysisResult={setAnalysisResult}
-        />;
-      case 'settings':
-        return <Settings />;
-      case 'discovery':
-        return (
+    return (
+      <>
+        <div className={activeTab === 'dashboard' ? 'block h-full w-full' : 'hidden'}>
+          <Dashboard 
+            setActiveTab={setActiveTab} 
+            setAnalysisRepoUrl={setAnalysisRepoUrl}
+            setAnalysisResult={setAnalysisResult}
+            sessionId={sessionId}
+            setSessionId={setSessionId}
+          />
+        </div>
+        <div className={activeTab === 'settings' ? 'block h-full w-full' : 'hidden'}>
+          <Settings />
+        </div>
+        <div className={activeTab === 'discovery' ? 'block h-full w-full' : 'hidden'}>
           <Discovery
             setActiveTab={setActiveTab}
             repoUrl={analysisRepoUrl}
@@ -247,47 +222,21 @@ export default function App() {
             setTimeTaken={setAnalysisTimeTaken}
             workflowState={workflowState}
             setWorkflowState={setWorkflowState}
+            sessionId={sessionId}
+            setSessionId={setSessionId}
           />
-        );
-      case 'runner':
-        return (
-          <ProjectRunner
-            setActiveTab={setActiveTab}
-            analysisResult={analysisResult}
-            repoUrl={migrationRepoUrl}
-            setRepoUrl={setMigrationRepoUrl}
-            targetVersion={migrationTargetVersion}
-            setTargetVersion={setMigrationTargetVersion}
-            loading={migrationLoading}
-            setLoading={setMigrationLoading}
-            result={migrationResult}
-            setResult={setMigrationResult}
-            error={migrationError}
-            setError={setMigrationError}
-            statusText={migrationStatusText}
-            setStatusText={setMigrationStatusText}
-            history={migrationHistory}
-            setHistory={setMigrationHistory}
-            elapsedTime={migrationElapsedTime}
-            timeTaken={migrationTimeTaken}
-            setTimeTaken={setMigrationTimeTaken}
-            workflowState={workflowState}
-            setWorkflowState={setWorkflowState}
-          />
-        );
-      case 'test-recommendation':
-        return (
+        </div>
+        <div className={activeTab === 'test-recommendation' ? 'block h-full w-full' : 'hidden'}>
           <AITestRecommendation
             setActiveTab={setActiveTab}
             repoUrl={migrationRepoUrl}
             workflowState={workflowState}
             setWorkflowState={setWorkflowState}
             analysisResult={analysisResult}
+            sessionId={sessionId}
           />
-        );
-      case 'results':
-      case 'testing':
-        return (
+        </div>
+        <div className={(activeTab === 'testing' || activeTab === 'execute-tests') ? 'block h-full w-full' : 'hidden'}>
           <FunctionalTesting
             setActiveTab={setActiveTab}
             repoUrl={migrationRepoUrl}
@@ -295,137 +244,133 @@ export default function App() {
             result={migrationResult}
             workflowState={workflowState}
             setWorkflowState={setWorkflowState}
+            sessionId={sessionId}
           />
-        );
-      case 'summary':
-        return <Summary repoUrl={analysisRepoUrl || migrationRepoUrl} />;
-      default:
-        return <Dashboard setActiveTab={setActiveTab} />;
-    }
+        </div>
+        <div className={activeTab === 'results' ? 'block h-full w-full' : 'hidden'}>
+          <TestResults repoUrl={migrationRepoUrl} analysisResult={analysisResult} />
+        </div>
+        <div className={activeTab === 'summary' ? 'block h-full w-full' : 'hidden'}>
+          <Summary repoUrl={analysisRepoUrl || migrationRepoUrl} sessionId={sessionId} />
+        </div>
+      </>
+    );
   };
 
   if (!isLoggedIn) {
     return <Login onLogin={(user) => { setIsLoggedIn(true); setCurrentUser(user); }} />;
   }
 
+  const currentIndex = wizardNodes.findIndex(n => n.id === activeTab);
+  const currentStep = currentIndex >= 0 ? currentIndex + 1 : 0;
+  const currentTitle = currentIndex >= 0 ? wizardNodes[currentIndex].label.toUpperCase() : 'SETTINGS';
+
   return (
-    <div className="flex flex-col h-screen bg-[#F7F8FC] font-sans text-[#101828] overflow-hidden">
+    <div className="flex h-screen bg-[#F7F8FC] font-sans text-[#101828] overflow-hidden">
       
-      {/* ── TOP HEADER ── */}
-      <header className="bg-white border-b border-[#EAECF0] relative z-20 flex-shrink-0">
-        <div className="w-full px-8 py-4 flex items-center justify-between h-[80px]">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-gradient-to-br from-[#5B5FF6] to-[#7B61FF] rounded-xl text-white shadow-soft">
-              <Sparkles size={28} />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-3xl text-[#101828] leading-tight tracking-tight">PROVA</h1>
-            </div>
+      {/* ── SIDEBAR ── */}
+      <div className="w-[280px] bg-white border-r border-[#EAECF0] flex flex-col h-full z-20 flex-shrink-0">
+        <div className="p-6 flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-[#5B5FF6] to-[#7B61FF] rounded-xl text-white shadow-soft">
+            <Sparkles size={24} />
           </div>
+          <div>
+            <h1 className="font-extrabold text-xl text-[#101828] leading-tight tracking-tight">PROVA</h1>
+            <p className="text-[10px] text-[#667085] uppercase tracking-wider font-semibold">AI Testing Platform</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2">
+          {wizardNodes.map((node, index) => {
+            const isActive = activeTab === node.id;
+            const isCompleted = index < currentIndex;
+            
+            let isLocked = false;
+            let lockedReason = '';
+            if ((node.id === 'test-recommendation' || node.id === 'results' || node.id === 'execute-tests') && !workflowState.analysisCompleted) {
+              isLocked = true;
+              lockedReason = 'Complete Repository Analysis first.';
+            }
+
+            return (
+              <button
+                key={node.id}
+                onClick={() => {
+                  if (isLocked) {
+                    alert(lockedReason);
+                    return;
+                  }
+                  setActiveTab(node.id);
+                }}
+                title={isLocked ? lockedReason : ''}
+                className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all text-left w-full
+                  ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[#F9FAFB]'}
+                  ${isActive ? 'bg-[#F4F5FF] hover:bg-[#F4F5FF]' : ''}
+                `}
+              >
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors
+                  ${isActive ? 'bg-[#5B5FF6] text-white' : (isCompleted ? 'bg-[#12B76A] text-white' : 'bg-[#F2F4F7] text-[#667085]')}
+                `}>
+                  {index + 1}
+                </div>
+                <span className={`text-sm font-semibold ${isActive ? 'text-[#5B5FF6]' : 'text-[#344054]'}`}>
+                  {node.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Need Help Widget */}
+        <div className="p-6 mt-auto">
+          <div className="bg-[#F7F8FC] p-5 rounded-2xl border border-[#EAECF0]">
+            <h4 className="text-sm font-bold text-[#101828] mb-1">Need Help?</h4>
+            <p className="text-xs text-[#667085] mb-4 leading-relaxed">We're here to help you at every step.</p>
+            <button className="w-full bg-white border border-[#EAECF0] hover:bg-gray-50 text-[#101828] text-sm font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors">
+              Contact Support
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MAIN CONTENT AREA ── */}
+      <div className="flex flex-col flex-1 h-full overflow-hidden">
+        
+        {/* Top Header */}
+        <header className="h-[60px] bg-[#F7F8FC] flex items-center justify-end px-6 flex-shrink-0 z-10">
+
           
           <div className="flex items-center gap-5">
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`text-[#667085] hover:text-[#5B5FF6] transition-colors p-1 flex items-center gap-1 text-sm font-medium ${activeTab === 'settings' ? 'text-[#5B5FF6]' : ''}`}
-            title="Settings"
-          >
-            <SettingsIcon size={18} />
-          </button>
-          
-          <div className="h-8 w-[1px] bg-[#EAECF0] mx-1"></div>
-          
-          <div className="flex items-center gap-3 cursor-pointer">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#A5B4FC] to-[#818CF8] flex items-center justify-center text-white font-bold text-sm shadow-sm uppercase">
-              {currentUser ? currentUser.substring(0, 2) : 'U'}
-            </div>
-            <div className="hidden md:block">
-              <p className="text-sm font-semibold text-[#101828] leading-tight capitalize">{currentUser || 'User'}</p>
-              <p className="text-xs text-[#667085]">Admin</p>
-            </div>
-          </div>
-        </div>
-        </div>
-      </header>
-
-      {/* Main View Container */}
-      <div className="flex flex-col flex-1 h-full overflow-y-auto">
-        
-        {/* ── WORKFLOW WIZARD ── */}
-        <div className="bg-white border-b border-[#EAECF0] px-8 py-6 flex-shrink-0">
-          <div className="w-full">
-            <div className="flex items-center justify-between relative max-w-7xl mx-auto">
-              {/* Connector line behind nodes */}
-              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#EAECF0] -translate-y-1/2 z-0" />
-              
-              {wizardNodes.map((node, index) => {
-                const isActive = activeTab === node.id;
-                // Basic logic: if index <= current active index, it's completed or current.
-                // Since activeTab might not be in wizard (like settings), we just use exact match for current.
-                const currentIndex = wizardNodes.findIndex(n => n.id === activeTab);
-                const isCompleted = index < currentIndex;
-                const isPending = index > currentIndex;
-                let isLocked = false;
-                let lockedReason = '';
-                if (node.id === 'runner' && !workflowState.analysisCompleted) {
-                  isLocked = true;
-                  lockedReason = 'Complete Repository Analysis before accessing Project Runner.';
-                } else if ((node.id === 'test-recommendation' || node.id === 'results') && !workflowState.runnerCompleted) {
-                  isLocked = true;
-                  lockedReason = 'Complete Project Runner before accessing AI Test Recommendation.';
-                }
-                
-                let nodeStyle = {};
-                let iconStyle = {};
-                if (isActive) {
-                  nodeStyle = { background: 'linear-gradient(135deg, #5B5FF6, #7B61FF)', color: 'white', border: 'none' };
-                  iconStyle = { color: 'white' };
-                } else if (isCompleted) {
-                  nodeStyle = { background: '#12B76A', color: 'white', border: 'none' };
-                  iconStyle = { color: 'white' };
-                } else {
-                  nodeStyle = { background: '#F7F8FC', color: '#98A2B3', border: '1px solid #EAECF0' };
-                  iconStyle = { color: '#98A2B3' };
-                }
-
-                return (
-                  <div 
-                    key={node.id}
-                    onClick={() => {
-                      if (isLocked) {
-                        alert(lockedReason);
-                        return;
-                      }
-                      setActiveTab(node.id);
-                    }}
-                    className={`relative z-10 flex flex-col items-center gap-2 ${isLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer group'}`}
-                    title={isLocked ? lockedReason : ''}
-                  >
-                    <div 
-                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-all ${!isLocked && 'group-hover:scale-110'}`}
-                      style={nodeStyle}
-                    >
-                      {node.icon}
-                    </div>
-                    <div className="text-center bg-white px-2 rounded flex flex-col items-center">
-                      <p className={`text-sm font-bold ${isActive ? 'text-[#101828]' : 'text-[#667085]'}`}>
-                        {node.label}
-                      </p>
-                      {isLocked && <div style={{ fontSize: 10, color: '#F04438' }}>Locked</div>}
-                    </div>
-                  </div>
-                );
-              })}
+            <button className="text-[#667085] hover:text-[#101828] transition-colors"><HelpCircle size={22} /></button>
+            <button className="text-[#667085] hover:text-[#101828] transition-colors relative">
+              <Bell size={22} />
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#F04438] border-2 border-[#F7F8FC] rounded-full"></span>
+            </button>
+            
+            <div className="h-8 w-px bg-[#D0D5DD] mx-2"></div>
+            
+            <div className="flex items-center gap-3 cursor-pointer">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#A5B4FC] to-[#818CF8] flex items-center justify-center text-white font-bold text-sm shadow-sm uppercase">
+                {currentUser ? currentUser.substring(0, 2) : 'A'}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-semibold text-[#101828] leading-tight capitalize">{currentUser || 'Admin'}</p>
+                <p className="text-xs text-[#667085]">Administrator</p>
+              </div>
+              <ChevronDown size={16} className="text-[#667085]" />
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* ── DYNAMIC CONTENT AREA ── */}
-        <main className="px-4 md:px-8 p-8 w-full flex-1 flex flex-col">
-          {renderContent()}
+        {/* Dynamic Content */}
+        <main className="flex-1 overflow-y-auto px-8 pb-8">
+          <div className="w-full h-full">
+            {renderContent()}
+          </div>
         </main>
+
       </div>
       <ChatbotWidget />
     </div>
   );
 }
-

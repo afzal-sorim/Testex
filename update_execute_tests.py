@@ -1,4 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import os
+
+file_path = r"c:\Users\ST-Balakumaran\Downloads\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\Testex-92bbf37d232ecd081fe67ba27facad4e4494d74b\frontend\src\pages\FunctionalTesting.jsx"
+
+content = """import React, { useState, useEffect, useRef } from 'react';
 import { 
   CheckCircle2, XCircle, Info, RotateCw, Monitor, Clock, Play, FileText, Download, StopCircle, RefreshCw, Box
 } from 'lucide-react';
@@ -12,28 +16,21 @@ import {
 export default function FunctionalTesting({ 
   setActiveTab, 
   repoUrl, 
-  analysisResult,
   result, 
   workflowState 
 }) {
   const repoName = repoUrl ? repoUrl.split('/').pop().replace('.git', '') : '';
-  const recommendedTool = analysisResult?.recommendedTestingTool || 'playwright';
+  const recommendedTool = result?.recommendedTestingTool || 'playwright';
   const isPlaywright = recommendedTool.toLowerCase() === 'playwright';
 
   // State
   const [status, setStatus] = useState('IDLE'); // IDLE, RUNNING, COMPLETED, FAILED
-  const [totalTests, setTotalTests] = useState(analysisResult?.testScenarios || 0);
+  const [totalTests, setTotalTests] = useState(result?.testScenarios || 226);
   const [passed, setPassed] = useState(0);
   const [failed, setFailed] = useState(0);
   const [skipped, setSkipped] = useState(0);
   const [progress, setProgress] = useState(0);
   
-  useEffect(() => {
-    if (analysisResult?.testScenarios) {
-      setTotalTests(analysisResult.testScenarios);
-    }
-  }, [analysisResult]);
-
   const [logs, setLogs] = useState([]);
   const [startTime, setStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -87,7 +84,7 @@ export default function FunctionalTesting({
         }
 
       }, 1500);
-    } else if (status === 'COMPLETED' || status === 'FAILED') {
+    } else if (status === 'COMPLETED') {
       setProgress(100);
     }
     return () => clearInterval(interval);
@@ -101,18 +98,6 @@ export default function FunctionalTesting({
           const apiStatus = isPlaywright ? await getPlaywrightStatus(repoName) : await getSeleniumStatus(repoName);
           if (apiStatus.status !== 'RUNNING') {
             setStatus(apiStatus.status === 'FAILED' ? 'FAILED' : 'COMPLETED');
-            
-            // Sync with real test results if available
-            if (apiStatus.totalTests > 0) {
-              setTotalTests(apiStatus.totalTests);
-              setPassed(apiStatus.passedTests || 0);
-              setFailed(apiStatus.failedTests || 0);
-              setSkipped(apiStatus.skippedTests || 0);
-            } else if (apiStatus.status === 'COMPLETED' && passed === 0) {
-              // If backend doesn't provide stats but we completed, fake some stats to match totalTests
-              setPassed(totalTests > 0 ? totalTests : 1);
-            }
-
             setLogs(prev => [...prev, {
               id: prev.length,
               time: new Date().toLocaleTimeString([], { hour12: false }),
@@ -170,7 +155,7 @@ export default function FunctionalTesting({
     <div className="space-y-6 animate-fadeIn w-full mx-auto pb-12 pt-4">
       
       {/* Top Banner - Execution Progress */}
-      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5">
+      <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-bold text-[#101828]">Execution in Progress</h2>
@@ -196,7 +181,7 @@ export default function FunctionalTesting({
           </div>
         </div>
         
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           <div className="flex-1 h-3 bg-[#F2F4F7] rounded-full overflow-hidden">
             <div 
               className="h-full bg-[#3B3FF6] rounded-full transition-all duration-500 ease-out relative overflow-hidden"
@@ -210,9 +195,9 @@ export default function FunctionalTesting({
       </div>
 
       {/* 4 Counter Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Passed */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-5 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="flex items-center gap-2 mb-2 z-10">
             <CheckCircle2 size={20} className="text-[#12B76A]" strokeWidth={2.5} />
@@ -222,7 +207,7 @@ export default function FunctionalTesting({
         </div>
         
         {/* Failed */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-5 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-rose-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="flex items-center gap-2 mb-2 z-10">
             <XCircle size={20} className="text-[#F04438]" strokeWidth={2.5} />
@@ -232,7 +217,7 @@ export default function FunctionalTesting({
         </div>
         
         {/* Skipped */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-5 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="flex items-center gap-2 mb-2 z-10">
             <RotateCw size={20} className="text-[#F79009]" strokeWidth={2.5} />
@@ -242,7 +227,7 @@ export default function FunctionalTesting({
         </div>
         
         {/* Total */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md p-5 flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm p-5 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-[#5B5FF6]/10 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="flex items-center gap-2 mb-2 z-10">
             <Box size={20} className="text-[#5B5FF6]" strokeWidth={2.5} />
@@ -253,10 +238,10 @@ export default function FunctionalTesting({
       </div>
 
       {/* Main Grid: Logs and Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
         
         {/* Live Execution Logs */}
-        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md flex flex-col overflow-hidden h-[400px] lg:h-[550px]">
+        <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm flex flex-col overflow-hidden h-[500px]">
           <div className="p-4 border-b border-[#EAECF0] bg-[#F9FAFB]">
             <h3 className="text-sm font-bold text-[#101828]">Live Execution Logs</h3>
           </div>
@@ -267,7 +252,7 @@ export default function FunctionalTesting({
               </div>
             ) : (
               logs.map((log) => (
-                <div key={log.id} className="flex items-start gap-5 text-xs font-medium">
+                <div key={log.id} className="flex items-start gap-4 text-xs font-medium">
                   <span className="text-[#98A2B3] w-16 flex-shrink-0 font-mono">{log.time}</span>
                   <div className="mt-0.5 text-[#667085]">
                     {log.icon === 'info' ? <Info size={14} /> : (
@@ -299,10 +284,10 @@ export default function FunctionalTesting({
         </div>
 
         {/* Right Column: Details & Preview */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           
           {/* Execution Details */}
-          <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md overflow-hidden">
+          <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-[#EAECF0]">
               <h3 className="text-sm font-bold text-[#101828]">Execution Details</h3>
             </div>
@@ -331,7 +316,7 @@ export default function FunctionalTesting({
           </div>
 
           {/* Live Preview */}
-          <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[3px] hover:shadow-md overflow-hidden flex-1 flex flex-col">
+          <div className="bg-white border border-[#EAECF0] rounded-2xl shadow-sm overflow-hidden flex-1 flex flex-col">
             <div className="p-4 border-b border-[#EAECF0]">
               <h3 className="text-sm font-bold text-[#101828]">Live Preview</h3>
             </div>
@@ -396,3 +381,9 @@ export default function FunctionalTesting({
     </div>
   );
 }
+"""
+
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("FunctionalTesting.jsx updated successfully.")

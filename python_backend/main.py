@@ -1,4 +1,14 @@
-﻿from fastapi import FastAPI
+import os
+try:
+    with open(".env") as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, val = line.strip().split("=", 1)
+                os.environ[key] = val
+except Exception:
+    pass
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import api
 from app.routers import api_keys

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let apiBase = import.meta.env.VITE_API_URL || '/api';
+let apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 if (apiBase.startsWith('http') && !apiBase.endsWith('/api')) {
   apiBase = apiBase.replace(/\/$/, '') + '/api';
 }
@@ -57,8 +57,23 @@ export const getStatus = async () => {
   return response.data;
 };
 
-export const analyzeRepository = async (repoUrl, githubToken, localPath) => {
-  const response = await apiClient.post('/analyze', { repoUrl, githubToken, localPath });
+export const analyzeRepository = async (repoUrl, githubToken, localPath, sessionId = null) => {
+  const response = await apiClient.post('/analyze', { repoUrl, githubToken, localPath, sessionId });
+  return response.data;
+};
+
+export const createSession = async (repoUrl = "", localPath = "") => {
+  const response = await apiClient.post('/sessions', { repoUrl, localPath });
+  return response.data;
+};
+
+export const getSession = async (sessionId) => {
+  const response = await apiClient.get(`/sessions/${sessionId}`);
+  return response.data;
+};
+
+export const updateSession = async (sessionId, updates) => {
+  const response = await apiClient.patch(`/sessions/${sessionId}`, { updates });
   return response.data;
 };
 
