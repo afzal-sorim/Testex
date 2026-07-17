@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: app-redis
+    expose:
+      - "6379"
+    restart: always
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - workspace_data:/app/workspace
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - PLAYWRIGHT_SERVICE_URL=http://playwright:3000
+      - APP_WORK_DIR=/app/workspace
+    depends_on:
+      - redis
+    restart: always
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-celery
+    command: celery -A app.celery_app.celery_app worker --loglevel=info -P solo --concurrency=1
+    volumes:
+      - workspace_data:/app/workspace
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - APP_WORK_DIR=/app/workspace
+    depends_on:
+      - redis
+      - backend
+    restart: always
+
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    container_name: app-playwright
+    expose:
+      - "3000"
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: app-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  workspace_data:
