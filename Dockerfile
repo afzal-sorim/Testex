@@ -45,6 +45,7 @@ RUN npx playwright install chromium --with-deps
 # Copy the rest of the backend source code into /app
 COPY python_backend/ .
 COPY knowledge_base /app/knowledge_base
+COPY knowledge_base /knowledge_base
 
 # Copy the startup script from the root and make it executable
 COPY start.sh /app/start.sh
