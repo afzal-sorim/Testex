@@ -1,0 +1,35 @@
+# Use a lightweight Node.js base image
+FROM node:20-slim
+
+# Set environment variables to optimize memory for Render Free Tier (512MB)
+# This limits Node.js garbage collector to aggressively free up memory
+ENV NODE_OPTIONS="--max-old-space-size=256"
+ENV PORT=3000
+
+# Set the working directory
+WORKDIR /app
+
+# Install basic system utilities required by Playwright
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package config first to leverage caching
+COPY playwright_server/package.json .
+
+# Install dependencies (Express, Playwright test, AdmZip)
+RUN npm install
+
+# Strictly install ONLY Chromium to drastically reduce image size.
+# This prevents downloading heavy Firefox and Webkit browsers.
+RUN npx playwright install chromium --with-deps
+
+# Copy the Express server code
+COPY playwright_server/server.js .
+
+# Expose the service port
+EXPOSE 3000
+
+# Run the Express server on startup
+CMD ["npm", "start"]

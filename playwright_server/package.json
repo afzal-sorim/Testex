@@ -1,0 +1,15 @@
+{
+  "name": "playwright-validation-server",
+  "version": "1.0.0",
+  "description": "Remote Playwright execution server for JavaAPEX",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "adm-zip": "^0.5.10",
+    "express": "^4.18.2"
+  }
+}
