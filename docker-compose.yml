@@ -59,16 +59,6 @@ services:
       - "3000"
     restart: always
 
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: app-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    restart: always
 
 volumes:
   workspace_data:
