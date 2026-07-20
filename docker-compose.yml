@@ -26,7 +26,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: app-backend
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     expose:
       - "8000"
     ports:
@@ -35,6 +35,7 @@ services:
       - workspace_data:/app/workspace
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./workspace/prova.db}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
@@ -54,6 +55,7 @@ services:
       - workspace_data:/app/workspace
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./workspace/prova.db}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
