@@ -38,6 +38,7 @@ class ConvertRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    sessionId: Optional[str] = None
     apiKey: Optional[str] = None
     provider: Optional[str] = None
     modelName: Optional[str] = None
