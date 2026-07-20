@@ -118,8 +118,18 @@ class PlaywrightService:
         # Keep active/completed/error states if background task set them
         if repo_name in self._results:
             cached_status = self._results[repo_name].get("status")
-            # Always preserve RUNNING — disk detection must NOT override an active run
+            # If RUNNING, also check if results appeared on disk (self-healing fallback)
             if cached_status == "RUNNING":
+                if project_dir:
+                    json_report_path = Path(project_dir) / "playwright-report" / "test-results.json"
+                    if json_report_path.exists():
+                        try:
+                            html_dir = Path(project_dir) / "playwright-report"
+                            result = self._parse_json_results(json_report_path, html_dir, repo_name)
+                            self._results[repo_name] = result
+                            return result
+                        except Exception:
+                            pass
                 return self._results[repo_name]
             # Also preserve terminal states set by the background task
             if cached_status in ("ERROR", "FAILED", "PASSED", "COMPLETED", "SUCCESS"):
@@ -443,6 +453,7 @@ test.describe('Navigation & Core Routing', () => {
                 ["npm", "install", "--prefer-offline"],
                 project_dir,
                 env,
+                timeout=600,
             )
             if not ok:
                 return self._error(f"npm install failed:\n{output[-3000:]}")
@@ -452,16 +463,18 @@ test.describe('Navigation & Core Routing', () => {
                 ["npx", "playwright", "install", "chromium", "--with-deps"],
                 project_dir,
                 env,
+                timeout=600,
             )
 
-        # Step 3: Run playwright tests with HTML + JSON reporters in headed mode
+        # Step 3: Run playwright tests with HTML + JSON reporters
         cmd = [
             "npx", "playwright", "test",
             "--reporter=html,json",
             "--timeout=30000",
+            "--workers=2",
         ]
 
-        ok, output = await self._run_subprocess(cmd, project_dir, env)
+        ok, output = await self._run_subprocess(cmd, project_dir, env, timeout=600)
 
         # Parse JSON results (even if tests failed, JSON is still written)
         if json_report_path.exists():
@@ -549,7 +562,7 @@ test.describe('Navigation & Core Routing', () => {
             return self._error(f"Failed to communicate with external Playwright validation service at {url}: {exc}")
 
 
-    async def _run_subprocess(self, cmd: list, cwd: Path, env: dict):
+    async def _run_subprocess(self, cmd: list, cwd: Path, env: dict, timeout: int = 300):
         """Run a subprocess asynchronously and return (success, combined_output)."""
         import sys
         import shutil
@@ -571,11 +584,16 @@ test.describe('Navigation & Core Routing', () => {
                 stderr=asyncio.subprocess.STDOUT,
                 env=env,
             )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=300)
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             output = stdout.decode("utf-8", errors="replace") if stdout else ""
             return proc.returncode == 0, output
         except asyncio.TimeoutError:
-            return False, "Process timed out after 300 seconds."
+            # Kill the timed-out process to avoid orphans
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            return False, f"Process timed out after {timeout} seconds."
         except Exception as e:
             return False, f"Failed to start process: {e}"
 

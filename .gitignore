@@ -13,3 +13,4 @@ python_backend/settings.json
 service_logs/
 tunnel_url.txt
 redis/
+workspace/

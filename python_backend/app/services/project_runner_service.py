@@ -733,7 +733,10 @@ class ProjectRunnerService:
             await self.stop_project(repo_name)
             
         # Clean up any leftover processes before starting
-        self.cleanup_orphaned_processes(repo_name)
+        old_port = self.runs[repo_name].get("port") if repo_name in self.runs else None
+        self.cleanup_orphaned_processes(repo_name, port=old_port)
+        # Also ensure default start port is free
+        self.cleanup_orphaned_processes(repo_name, port=8081)
 
         run_dir = self.get_run_dir(repo_name)
         if not run_dir.exists():
