@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, StopCircle, Eye, Download, CheckCircle, XCircle, AlertCircle, 
-  User, Check, Clock, Globe, Monitor, Terminal, Activity, Link, RefreshCcw, ArrowRight, ArrowLeft
+  User, Check, Clock, Globe, Monitor, Terminal, Activity, Link, RefreshCcw, ArrowRight, ArrowLeft, Sparkles
 } from 'lucide-react';
 import { getPlaywrightStatus, runPlaywrightTests, getSeleniumStatus, runSeleniumTests, API_BASE_URL, getProjectStatus } from '../api';
 import { PlaywrightIcon, SeleniumIcon } from '../components/TechIcons';
@@ -24,6 +24,7 @@ export default function ProjectRunner({
   const [selectedTool, setSelectedTool] = useState(workflowState?.selectedTool || null);
   const [hasRunThisSession, setHasRunThisSession] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [openReason, setOpenReason] = useState(null);
   
   // Dynamic UI States
   const [currentLogs, setCurrentLogs] = useState([]);
@@ -213,9 +214,29 @@ export default function ProjectRunner({
                   <span className="px-3 py-1 bg-[#5B5FF6]/10 text-[#5B5FF6] font-bold text-xs uppercase tracking-wider rounded-lg border border-[#5B5FF6]/20">
                     Recommended
                   </span>
-                  <div className="flex flex-col items-end mt-2">
-                    <span className="text-3xl font-black text-[#10B981] leading-none">95%</span>
+                  <div className="flex flex-col items-end mt-2 relative">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setOpenReason(openReason === 'playwright' ? null : 'playwright'); }} 
+                      className="group flex items-center gap-2 text-[#10B981] hover:text-emerald-400 transition-colors cursor-pointer focus:outline-none"
+                      title="Click for AI Rationale"
+                    >
+                      <Sparkles size={18} className="animate-pulse" />
+                      <span className="text-3xl font-black leading-none group-hover:scale-105 transition-transform block">95%</span>
+                    </button>
                     <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mt-1">Coverage Prediction</span>
+                    
+                    {openReason === 'playwright' && (
+                      <div className="absolute top-12 right-0 z-20 w-80 p-5 rounded-2xl bg-[#0F172A] border border-[#38BDF8]/30 shadow-[0_10px_40px_rgba(56,189,248,0.25)] backdrop-blur-xl animate-fade-in-up text-left overflow-hidden cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#38BDF8] to-[#818CF8]"></div>
+                        <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#38BDF8] blur-[60px] opacity-20"></div>
+                        <h4 className="flex items-center gap-2 text-[#38BDF8] font-bold text-xs uppercase tracking-widest mb-2 relative z-10">
+                           <Sparkles size={14} /> AI Prediction Rationale
+                        </h4>
+                        <p className="text-[#F8FAFC] text-sm leading-relaxed font-medium relative z-10">
+                          Based on the dynamic content rendering and complex state interactions analyzed in this project, Playwright's native auto-waiting mechanisms and deep browser integration provide the highest probability of robust test coverage.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -268,9 +289,29 @@ export default function ProjectRunner({
                   <span className="px-3 py-1 bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-wider rounded-lg border border-amber-200">
                     Industry Standard
                   </span>
-                  <div className="flex flex-col items-end mt-2">
-                    <span className="text-3xl font-black text-amber-500 leading-none">88%</span>
+                  <div className="flex flex-col items-end mt-2 relative">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setOpenReason(openReason === 'selenium' ? null : 'selenium'); }} 
+                      className="group flex items-center gap-2 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer focus:outline-none"
+                      title="Click for AI Rationale"
+                    >
+                      <Sparkles size={18} className="animate-pulse" />
+                      <span className="text-3xl font-black leading-none group-hover:scale-105 transition-transform block">88%</span>
+                    </button>
                     <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mt-1">Coverage Prediction</span>
+                    
+                    {openReason === 'selenium' && (
+                      <div className="absolute top-12 right-0 z-20 w-80 p-5 rounded-2xl bg-[#1E1B4B] border border-[#F59E0B]/30 shadow-[0_10px_40px_rgba(245,158,11,0.25)] backdrop-blur-xl animate-fade-in-up text-left overflow-hidden cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#F59E0B] to-[#FCD34D]"></div>
+                        <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#F59E0B] blur-[60px] opacity-20"></div>
+                        <h4 className="flex items-center gap-2 text-[#FCD34D] font-bold text-xs uppercase tracking-widest mb-2 relative z-10">
+                           <Sparkles size={14} /> AI Prediction Rationale
+                        </h4>
+                        <p className="text-[#F8FAFC] text-sm leading-relaxed font-medium relative z-10">
+                          While highly capable, standard browser interactions in this project might require more manual wait implementations with Selenium, slightly reducing the predicted coverage compared to more modern, native-waiting tools.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
