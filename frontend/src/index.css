@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply transition-colors duration-300 font-sans antialiased;
+    background-color: #F7F8FC;
+    color: #101828;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+/* Glassmorphism Styles */
+.glass-card {
+  @apply bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm rounded-2xl transition-all duration-300;
+}
+
+.glass-nav {
+  @apply bg-white/80 backdrop-blur-md border-b border-slate-200/50;
+}
+
+/* Code Editor container style */
+.code-container {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 2s infinite;
+  content: '';
+}
+
+/* Rocket Progress Bar Animation */
+@keyframes rocketTraverse {
+  0% {
+    left: -30px;
+  }
+  100% {
+    left: calc(var(--rocket-progress, 0%) - 10px);
+  }
+}
+
+@keyframes smokeTrail {
+  0% { opacity: 0.8; transform: scaleX(1) translateX(0); }
+  50% { opacity: 0.4; transform: scaleX(1.5) translateX(-5px); }
+  100% { opacity: 0; transform: scaleX(2) translateX(-15px); }
+}
+
+@keyframes rocketWobble {
+  0%, 100% { transform: translateY(-1px) rotate(-2deg); }
+  25% { transform: translateY(1px) rotate(0deg); }
+  50% { transform: translateY(-1px) rotate(2deg); }
+  75% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes progressPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(91, 95, 246, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(91, 95, 246, 0.6); }
+}
+
+.rocket-progress-container {
+  position: relative;
+  height: 24px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.rocket-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #5B5FF6 0%, #7B61FF 100%);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+.rocket-icon-animated {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  z-index: 10;
+  filter: drop-shadow(0 0 6px rgba(91, 95, 246, 0.5));
+  animation: rocketWobble 1s ease-in-out infinite;
+  transition: left 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rocket-smoke {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 8px;
+  background: linear-gradient(90deg, rgba(91, 95, 246, 0.6), rgba(91, 95, 246, 0));
+  border-radius: 4px;
+  animation: smokeTrail 0.6s ease-out infinite;
+  z-index: 5;
+}
+
+/* Migration history table styles */
+.migration-history-tab {
+  position: relative;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #667085;
+  background: transparent;
+  border: none;
+}
+
+.migration-history-tab:hover {
+  color: #5B5FF6;
+  background: rgba(91, 95, 246, 0.05);
+}
+
+.migration-history-tab.active {
+  color: #5B5FF6;
+  background: transparent;
+}
+
+.migration-history-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #5B5FF6;
+  border-radius: 2px 2px 0 0;
+}
+
+.migration-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+
+@keyframes slideRight {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@keyframes pulseLine {
+  0% { opacity: 0; transform: translateX(-50%); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(150%); }
+}
+.animation-delay-1000 { animation-delay: 1s; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animate-spin-slow { animation: spin 4s linear infinite; }

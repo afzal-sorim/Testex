@@ -1,0 +1,199 @@
+{
+  "sessionId": "94f2f516-8fb6-41a1-9121-ee0ddf3f92a5",
+  "repoUrl": "https://github.com/meenalozhnee04/task-manager.git",
+  "localPath": null,
+  "analysisResult": {
+    "repoUrl": "https://github.com/meenalozhnee04/task-manager.git",
+    "projectType": "Java",
+    "isJava": true,
+    "detectedJavaVersion": null,
+    "buildTool": "Maven",
+    "frameworkType": "Spring Boot / Thymeleaf",
+    "database": "H2 (Embedded)",
+    "packagingType": null,
+    "isMultiModule": false,
+    "hasFrontend": false,
+    "frontendFramework": null,
+    "endpointCount": 0,
+    "riskLevel": "Unknown",
+    "techDetails": null,
+    "deprecatedApis": [],
+    "dependencies": [],
+    "frameworkVersions": {},
+    "fullBrdReport": {
+      "orgInitial": "",
+      "orgName": "",
+      "appName": "task-manager",
+      "docVersion": "",
+      "docStatus": "",
+      "docDate": "",
+      "repoUrl": "",
+      "primaryLang": "",
+      "platform": "",
+      "environment": "",
+      "techStackSummary": [
+        "Language: Java",
+        "Framework: Spring Boot / Thymeleaf",
+        "Build Tool: Maven",
+        "Database: H2 (Embedded)"
+      ],
+      "docPurposeDesc": "",
+      "appPurposeDesc": "This application is a Spring Boot / Thymeleaf project built using Maven.",
+      "modernizationContext": "Project contains 0 deprecated API usages and uses Java 21. This baseline establishes functional testing boundaries for migration.",
+      "processingModes": "",
+      "totalPrograms": 0,
+      "totalLoc": 0,
+      "totalOrphanFiles": 0,
+      "updateTracking": [],
+      "staticCodeAnalysis": {
+        "programTypes": [],
+        "totalPhyFiles": 0,
+        "totalUsedFiles": 0,
+        "totalOrphFiles": 0,
+        "totalPhyLoc": 0,
+        "totalUsedLoc": 0,
+        "totalOrphLoc": 0
+      },
+      "detailedPurpose": "",
+      "objectives": [],
+      "inScope": [],
+      "outOfScope": [],
+      "capabilities": [
+        {
+          "name": "Core Business Logic",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        },
+        {
+          "name": "Data Persistence",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        }
+      ],
+      "architectureIntro": "",
+      "actors": [],
+      "uiComponents": [],
+      "bizComponents": [
+        "Application Services",
+        "Data Access Layer",
+        "API Controllers"
+      ],
+      "dataAccessComponents": [],
+      "dataStores": [],
+      "externalSystems": [],
+      "archPatterns": [],
+      "businessFlowOverview": "",
+      "fullModuleBreakdown": "",
+      "languages": [],
+      "onlineEnvironments": [],
+      "databases": [],
+      "jobControlDesc": "",
+      "jobSchedulingDesc": "",
+      "middlewares": [],
+      "securityFrameworkDesc": "",
+      "devTools": [],
+      "osDesc": "",
+      "dataEntitiesIntro": "",
+      "primaryDataStores": [
+        {
+          "name": "H2 (Embedded)",
+          "description": "Main application data store"
+        }
+      ],
+      "dataEntryPoints": [],
+      "dataProcessingWorkflows": [],
+      "dataExitPoints": [],
+      "criticalDataDependencies": [],
+      "dbSchemaIntro": "",
+      "keyRelationships": [],
+      "onlineProcessIntro": "",
+      "onlineTransactions": [],
+      "batchProcessIntro": "",
+      "batchCycles": [],
+      "jobStreamDependencyDesc": "",
+      "keyTransactions": [],
+      "keyScreenFlows": [],
+      "useCases": [],
+      "classModelIntro": "",
+      "classes": [],
+      "activityFlows": [],
+      "sequenceDiagrams": [],
+      "inboundIntegrations": [],
+      "outboundIntegrations": [],
+      "integrationTechs": [],
+      "apiGeneralNote": "",
+      "apiGroups": [
+        {
+          "name": "REST Endpoints",
+          "endpoints": []
+        }
+      ],
+      "authNfrs": [],
+      "authzNfrs": [],
+      "dataSecurityNfrs": [],
+      "availabilityNfrs": [],
+      "performanceNfrs": [],
+      "scalabilityNfrs": [],
+      "complianceNfrs": [],
+      "technicalRisks": [],
+      "operationalChallenges": [],
+      "securityConcerns": [],
+      "maintenanceIssues": [],
+      "fileGroups": [],
+      "orphanFilesByCategory": [],
+      "securityChecklist": [],
+      "piiAnalysis": [],
+      "acceptanceCriteria": [],
+      "knownLimitations": [],
+      "supportChannels": [],
+      "escalationMatrix": [],
+      "roles": [],
+      "glossary": [],
+      "sourceFiles": [],
+      "processingSummaryList": [],
+      "revisionHistory": []
+    },
+    "errorMessage": null,
+    "usedProvider": "database",
+    "sessionId": "94f2f516-8fb6-41a1-9121-ee0ddf3f92a5",
+    "testMetrics": {
+      "total": 0,
+      "passed": "Not Available",
+      "failed": "Not Available",
+      "type": "Not Detected",
+      "aiStrategy": {
+        "testingScope": "Failed to generate dynamic testing strategy.",
+        "coverageGaps": [],
+        "recommendedStrategy": {
+          "recommendedTool": "Unknown",
+          "testingType": "Unknown",
+          "priority": "Unknown",
+          "target": "Unknown",
+          "reason": "Unknown"
+        },
+        "newTestScope": []
+      }
+    },
+    "existingTestDetails": {
+      "frameworks": [],
+      "languages": [],
+      "testTypes": [],
+      "testCases": []
+    }
+  },
+  "workflowState": {
+    "analysisCompleted": true,
+    "runnerCompleted": false
+  },
+  "migrationResult": null,
+  "stats": {
+    "reposAnalyzed": 0,
+    "migrationsRun": 0,
+    "filesConverted": 0
+  },
+  "migrations": []
+}
