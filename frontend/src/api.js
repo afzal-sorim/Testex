@@ -105,8 +105,8 @@ export const getPythonZipUrl = () => {
   return `${API_BASE_URL}/download/python`;
 };
 
-export const askChatbot = async (message) => {
-  const response = await apiClient.post('/chat', { message });
+export const askChatbot = async (message, sessionId) => {
+  const response = await apiClient.post('/chat', { message, sessionId });
   return response.data;
 };
 

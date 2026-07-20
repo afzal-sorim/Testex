@@ -382,24 +382,84 @@ async def chat(request: ChatRequest):
             rag_context += f"- Source: {doc['source']}\n{doc['content']}\n\n"
             
         reports_dir = get_reports_dir()
-        last_analysis = reports_dir / "last_analysis.json"
-        if last_analysis.exists():
-            with open(last_analysis, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                rag_context += "=== Current Repository Context ===\n"
-                rag_context += f"- Project Name: {data.get('projectType')}\n"
-                rag_context += f"- Java Version: {data.get('detectedJavaVersion')}\n"
-                rag_context += f"- Frameworks: {data.get('frameworkVersions')}\n"
-                rag_context += f"- Dependencies: {data.get('dependencies')}\n\n"
+        
+        repo_name = None
+        analysis_data = None
+        if request.sessionId:
+            session = session_service.get_session(request.sessionId)
+            if session:
+                if session.get("repoUrl"):
+                    repo_name = session["repoUrl"].split('/')[-1].replace('.git', '')
+                if session.get("analysisResult"):
+                    analysis_data = session.get("analysisResult")
+
+        # Fallback to global analysis if no session data could be resolved
+        if not analysis_data:
+            last_analysis = reports_dir / "last_analysis.json"
+            if last_analysis.exists():
+                with open(last_analysis, "r", encoding="utf-8") as f:
+                    analysis_data = json.load(f)
+                    
+        if analysis_data:
+            if not repo_name and analysis_data.get("repoUrl"):
+                repo_name = analysis_data["repoUrl"].split('/')[-1].replace('.git', '')
                 
-        last_migration = reports_dir / "last_migration.json"
-        if last_migration.exists():
-            with open(last_migration, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            rag_context += "=== Current Repository Context ===\n"
+            rag_context += f"- Repository Name: {repo_name if repo_name else 'Unknown'}\n"
+            rag_context += f"- Project Type: {analysis_data.get('projectType', 'Unknown')}\n"
+            rag_context += f"- Language: {analysis_data.get('language', analysis_data.get('detectedJavaVersion'))}\n"
+            rag_context += f"- Frameworks: {analysis_data.get('framework', analysis_data.get('frameworkVersions'))}\n"
+            deps = str(analysis_data.get('dependencies'))
+            if len(deps) > 1000:
+                deps = deps[:1000] + " ... (truncated)"
+            rag_context += f"- Dependencies: {deps}\n\n"
+            
+            if "testMetrics" in analysis_data:
+                metrics = analysis_data["testMetrics"]
                 rag_context += "=== Current Testing Summary ===\n"
-                rag_context += f"- Target Java Version: {data.get('targetVersion')}\n"
-                rag_context += f"- Build Status: {data.get('buildStatus')}\n"
-                rag_context += f"- Modified Files Count: {len(data.get('modifiedFiles', []))}\n\n"
+                rag_context += f"- Total Tests: {metrics.get('total', 0)}\n"
+                rag_context += f"- Passed: {metrics.get('passed', 'N/A')}\n"
+                rag_context += f"- Failed: {metrics.get('failed', 'N/A')}\n"
+                
+                passed = metrics.get("passed", 0)
+                total = metrics.get("total", 0)
+                success_rate = "N/A"
+                if isinstance(total, (int, float)) and total > 0 and isinstance(passed, (int, float)):
+                    success_rate = f"{(passed / total) * 100:.1f}%"
+                    
+                rag_context += f"- Success Rate: {success_rate}\n"
+                rag_context += f"- Test Types: {metrics.get('type', 'Unknown')}\n\n"
+                
+        # If we have a repo_name, fetch specific functional testing scope
+        if repo_name:
+            safe_dir_name = quote(repo_name, safe='')
+            ui_scope_file = reports_dir / safe_dir_name / "ui-functional-test-scope.json"
+            if ui_scope_file.exists():
+                with open(ui_scope_file, "r", encoding="utf-8") as f:
+                    ui_data = json.load(f)
+                    ui_test_cases = ui_data.get("test_cases", []) if isinstance(ui_data, dict) else ui_data
+                    rag_context += "=== UI Functional Test Scope ===\n"
+                    rag_context += f"- Total Tests: {len(ui_test_cases)}\n"
+                    ui_test_str = json.dumps(ui_test_cases[:5])
+                    if len(ui_test_str) > 1000:
+                        ui_test_str = ui_test_str[:1000] + " ... (truncated)"
+                    rag_context += f"- Test Cases: {ui_test_str}\n\n"
+            
+            api_scope_file = reports_dir / safe_dir_name / "api-functional-test-scope.json"
+            if api_scope_file.exists():
+                with open(api_scope_file, "r", encoding="utf-8") as f:
+                    api_data = json.load(f)
+                    api_test_cases = api_data.get("test_cases", []) if isinstance(api_data, dict) else api_data
+                    rag_context += "=== API Functional Test Scope ===\n"
+                    rag_context += f"- Total Tests: {len(api_test_cases)}\n"
+                    api_test_str = json.dumps(api_test_cases[:5])
+                    if len(api_test_str) > 1000:
+                        api_test_str = api_test_str[:1000] + " ... (truncated)"
+                    rag_context += f"- Test Cases: {api_test_str}\n\n"
+
+        print("=== RAG CONTEXT DEBUG ===")
+        print(rag_context)
+        print("==========================")
 
         system_instruction = (
             "You are Prova, a highly helpful and expert Testing Assistant. "
@@ -411,6 +471,11 @@ async def chat(request: ChatRequest):
             "Provide concise, accurate, and markdown-formatted answers."
         )
 
+        # Add global safety limit to prevent TPM rate limit exceeded (Groq limit is ~12k tokens)
+        max_prompt_chars = 10000
+        if len(rag_context) > max_prompt_chars:
+            rag_context = rag_context[:max_prompt_chars] + "\n...[Context truncated due to length limitations]"
+            
         user_prompt = f"{rag_context}\nUser Question: {request.message}"
         
         ai_client = AIFactory.get_client()

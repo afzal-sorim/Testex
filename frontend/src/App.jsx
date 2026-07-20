@@ -61,8 +61,19 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(() => {
+    return localStorage.getItem('prova_session_id') || null;
+  });
   const [sessionData, setSessionData] = useState(null);
+
+  // Persist sessionId to localStorage when it changes
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem('prova_session_id', sessionId);
+    } else {
+      localStorage.removeItem('prova_session_id');
+    }
+  }, [sessionId]);
 
   // Repository Analysis Page states
   const [analysisResult, setAnalysisResult] = useState(null);

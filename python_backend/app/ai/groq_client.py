@@ -42,7 +42,6 @@ class GroqClient:
                     messages=messages,
                     model=active_model,
                     temperature=0.2,
-                    response_format={"type": "json_object"},
                     max_tokens=8192
                 )
                 return response.choices[0].message.content

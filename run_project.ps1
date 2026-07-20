@@ -16,10 +16,10 @@ if (-not (Test-Path "venv")) {
 Set-Location ..
 
 Write-Host "Starting FastAPI Backend..."
-Start-Process powershell -ArgumentList "-NoExit -Command `"cd 'python_backend'; .\venv\Scripts\activate; python main.py`""
+Start-Process powershell -ArgumentList "-NoExit -Command `"cd 'python_backend'; & '..\..\env\Scripts\activate.ps1'; python main.py`""
 
 Write-Host "Starting Celery Worker..."
-Start-Process powershell -ArgumentList "-NoExit -Command `"cd 'python_backend'; .\venv\Scripts\activate; celery -A app.celery_app.celery_app worker -P solo --loglevel=info`""
+Start-Process powershell -ArgumentList "-NoExit -Command `"cd 'python_backend'; & '..\..\env\Scripts\activate.ps1'; celery -A app.celery_app.celery_app worker -P solo --loglevel=info`""
 
 Write-Host "Setting up and starting Frontend..."
 Start-Process powershell -ArgumentList "-NoExit -Command `"cd 'frontend'; npm install; npm run dev`""
