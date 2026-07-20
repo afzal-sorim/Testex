@@ -8,7 +8,178 @@ from app.models import AnalysisResponse
 from app.ai.ai_factory import AIFactory
 from app.services.rag_service import rag_service
 
+
+import os
+import re
+
+class ExistingTestDetector:
+    def __init__(self, clone_dir):
+        from pathlib import Path
+        self.clone_dir = Path(clone_dir)
+        self.tests_found = []
+        self.frameworks = set()
+        self.languages = set()
+        self.total_test_count = 0
+        self.passed = "Not Available"
+        self.failed = "Not Available"
+        self.skipped = "Not Available"
+        self.test_types = set()
+
+    def scan(self):
+        import os
+        from pathlib import Path
+        
+        self._detect_frameworks_from_configs()
+        
+        for root, dirs, files in os.walk(self.clone_dir):
+            if 'node_modules' in dirs: dirs.remove('node_modules')
+            if '.git' in dirs: dirs.remove('.git')
+            if 'venv' in dirs: dirs.remove('venv')
+            if 'target' in dirs: dirs.remove('target')
+            if 'dist' in dirs: dirs.remove('dist')
+            if 'build' in dirs: dirs.remove('build')
+            if '.next' in dirs: dirs.remove('.next')
+
+            for file in files:
+                filepath = Path(root) / file
+                try:
+                    rel_path = filepath.relative_to(self.clone_dir).as_posix()
+                except Exception:
+                    continue
+                self._analyze_file(filepath, rel_path)
+                
+        self._parse_execution_results()
+                
+        return {
+            "metrics": {
+                "total": self.total_test_count,
+                "passed": self.passed,
+                "failed": self.failed,
+                "skipped": self.skipped,
+                "type": ", ".join(self.frameworks) if self.frameworks else "Not Detected"
+            },
+            "details": {
+                "frameworks": list(self.frameworks),
+                "languages": list(self.languages),
+                "testTypes": list(self.test_types),
+                "testCases": self.tests_found
+            }
+        }
+        
+    def _detect_frameworks_from_configs(self):
+        import json
+        pkg_json = self.clone_dir / 'package.json'
+        if pkg_json.exists():
+            try:
+                data = json.loads(pkg_json.read_text(encoding='utf-8', errors='ignore'))
+                deps = str(data.get('dependencies', {})) + str(data.get('devDependencies', {}))
+                if 'playwright' in deps: self.frameworks.add('Playwright')
+                if 'cypress' in deps: self.frameworks.add('Cypress')
+                if 'jest' in deps: self.frameworks.add('Jest')
+                if 'vitest' in deps: self.frameworks.add('Vitest')
+                if 'mocha' in deps: self.frameworks.add('Mocha')
+                if 'supertest' in deps: self.frameworks.add('Supertest')
+            except Exception:
+                pass
+                
+    def _parse_execution_results(self):
+        import re
+        junit_path = self.clone_dir / 'junit.xml'
+        if junit_path.exists():
+            try:
+                content = junit_path.read_text(encoding='utf-8', errors='ignore')
+                failures = len(re.findall(r'<failure', content))
+                testcases = len(re.findall(r'<testcase', content))
+                self.passed = testcases - failures
+                self.failed = failures
+                self.skipped = 0
+            except Exception:
+                pass
+        
+    def _analyze_file(self, filepath, rel_path):
+        import re
+        name = filepath.name.lower()
+        if not (name.endswith('.ts') or name.endswith('.js') or name.endswith('.java') or name.endswith('.py')):
+            return
+            
+        try:
+            content = filepath.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            return
+            
+        is_test = False
+        framework = "Unknown"
+        language = "Unknown"
+        test_type = "Unit / Integration"
+        count = 0
+        test_names = []
+        
+        if name.endswith('.spec.ts') or name.endswith('.test.ts') or name.endswith('.spec.js') or name.endswith('.test.js'):
+            is_test = True
+            language = "TypeScript" if name.endswith('.ts') else "JavaScript"
+            if "playwright" in content.lower():
+                framework = "Playwright"
+                test_type = "UI / E2E"
+            elif "cypress" in content.lower():
+                framework = "Cypress"
+                test_type = "UI / E2E"
+            elif "jest" in content.lower():
+                framework = "Jest"
+            else:
+                framework = "Mocha/Jest/Vitest"
+                
+            matches = re.findall(r'(?:test|it|describe|test\.describe)\s*\(\s*[\'"`](.*?)[\'"`]', content)
+            count = len(matches)
+            test_names = matches
+            
+        elif name.endswith('test.java') or name.endswith('tests.java'):
+            is_test = True
+            language = "Java"
+            if "org.junit" in content:
+                framework = "JUnit"
+            if "org.testng" in content:
+                framework = "TestNG"
+            if "MockMvc" in content:
+                test_type = "API / Integration"
+                
+            matches = re.findall(r'@Test[\s\S]*?void\s+([a-zA-Z0-9_]+)\s*\(', content)
+            count = len(matches)
+            test_names = matches
+            
+        elif (name.startswith('test_') or name.endswith('_test.py')) and name.endswith('.py'):
+            is_test = True
+            language = "Python"
+            if "pytest" in content:
+                framework = "PyTest"
+            elif "unittest" in content:
+                framework = "unittest"
+            else:
+                framework = "PyTest/unittest"
+                
+            matches = re.findall(r'def\s+(test_[a-zA-Z0-9_]+)\s*\(', content)
+            count = len(matches)
+            test_names = matches
+
+        if is_test and count > 0:
+            self.frameworks.add(framework)
+            self.languages.add(language)
+            self.test_types.add(test_type)
+            self.total_test_count += count
+            
+            for t_name in test_names:
+                parts = rel_path.split('/')
+                module_name = parts[1] if len(parts) > 1 else parts[0]
+                self.tests_found.append({
+                    "name": t_name,
+                    "file": rel_path,
+                    "framework": framework,
+                    "type": test_type,
+                    "module": module_name,
+                    "status": "Not Available"
+                })
+
 class AnalysisService:
+
     SKIP_DIRS = {".git", "target", "build", "node_modules", ".idea", ".vscode", ".mvn", "__pycache__", "test", "tests"}
     CONFIG_EXTENSIONS = {".xml", ".gradle", ".kts", ".properties", ".yml", ".yaml"}
     MAX_CONTEXT_CHARS = 3000
@@ -107,19 +278,75 @@ class AnalysisService:
             except Exception:
                 pass
                 
-            cache_file = app_config.workspace_directory / "analysis_cache.json"
-            cache_key = f"{repo_url}_{commit_hash}_analyze"
-            if cache_file.exists():
-                try:
-                    import json
-                    cache = json.loads(cache_file.read_text())
-                    if cache_key in cache:
-                        cached_data = cache[cache_key]
-                        # Only use cache if it has fullBrdReport (skip stale entries)
-                        if cached_data.get("fullBrdReport"):
-                            return AnalysisResponse(**cached_data)
-                except Exception:
-                    pass
+            from app.database import SessionLocal
+            from app.db_models import Repository, Analysis, TestMetric, AIStrategy
+
+            db = SessionLocal()
+            try:
+                repo_record = db.query(Repository).filter(Repository.repo_url == repo_url).first()
+                if repo_record and repo_record.commit_sha == commit_hash:
+                    # Look for completed analysis
+                    db_analysis = db.query(Analysis).filter(
+                        Analysis.repository_id == repo_record.id,
+                        Analysis.status == "completed"
+                    ).order_by(Analysis.created_at.desc()).first()
+
+                    if db_analysis and db_analysis.full_brd_report and db_analysis.existing_test_details:
+                        # Reconstruct response from DB json to prevent repeated LLM calls
+                        test_metrics = db_analysis.metrics
+                        metric_dict = {
+                            "total": test_metrics.total if test_metrics else 0,
+                            "passed": test_metrics.passed if test_metrics else "Not Executed",
+                            "failed": test_metrics.failed if test_metrics else "Not Executed",
+                            "type": test_metrics.testing_types if test_metrics else "Not Detected"
+                        }
+                        
+                        # Fetch AI strategy if exists
+                        if db_analysis.ai_strategy:
+                            metric_dict["aiStrategy"] = {
+                                "testingScope": db_analysis.ai_strategy.testing_scope_summary,
+                                "coverageGaps": db_analysis.ai_strategy.coverage_gaps or [],
+                                "recommendedStrategy": {
+                                    "recommendedTool": db_analysis.ai_strategy.recommended_tool,
+                                    "testingType": db_analysis.ai_strategy.testing_type,
+                                    "priority": db_analysis.ai_strategy.priority,
+                                    "target": db_analysis.ai_strategy.target,
+                                    "reason": db_analysis.ai_strategy.reason
+                                },
+                                "newTestScope": db_analysis.ai_strategy.new_test_scope or []
+                            }
+                        else:
+                            metric_dict["aiStrategy"] = {
+                                "testingScope": "Failed to generate dynamic testing strategy.",
+                                "coverageGaps": [],
+                                "recommendedStrategy": {"testingType": "Unknown", "recommendedTool": "Unknown", "target": "Unknown", "priority": "Unknown", "reason": "Unknown"},
+                                "newTestScope": []
+                            }
+                        return AnalysisResponse(
+                            repoUrl=repo_url,
+                            projectType=db_analysis.project_type,
+                            isJava=db_analysis.project_type.lower() == "java" if db_analysis.project_type else False,
+                            detectedJavaVersion=None,
+                            buildTool=db_analysis.build_tool,
+                            frameworkType=db_analysis.framework,
+                            database=db_analysis.database_type,
+                            packagingType=None,
+                            isMultiModule=False,
+                            hasFrontend=False,
+                            frontendFramework=None,
+                            endpointCount=0,
+                            riskLevel="Unknown",
+                            deprecatedApis=[],
+                            dependencies=[],
+                            frameworkVersions={},
+                            fullBrdReport=db_analysis.full_brd_report,
+                            errorMessage=None,
+                            usedProvider="database",
+                            testMetrics=metric_dict,
+                            existingTestDetails=db_analysis.existing_test_details
+                        )
+            finally:
+                db.close()
 
             project_type = self.detect_project_type(clone_dir)
             is_java = project_type.lower() == "java"
@@ -186,6 +413,60 @@ class AnalysisService:
             if context_notes:
                 processing_summary = "Repository Processing Summary:\n" + "\n".join(f"- {note}" for note in context_notes) + "\n\n"
             
+            # Detect Existing Tests
+            detector = ExistingTestDetector(clone_dir)
+            test_detection_result = detector.scan()
+            test_metrics = test_detection_result['metrics']
+            test_details = test_detection_result['details']
+
+            # Generate Testing Strategy dynamically
+            ai_client = AIFactory.get_client()
+            ai_test_prompt = f'''
+            Analyze the following repository test data and generate a testing strategy JSON.
+            Existing Tests: {test_metrics['total']}
+            Frameworks: {test_metrics['type']}
+            Test Cases: {[tc['name'] for tc in test_details['testCases']]}
+            Application Info: {project_info.get('framework_type')}
+            
+            Return ONLY a valid JSON object strictly matching this structure:
+            {{
+                "testingScope": "The AI analyzed the existing test coverage...",
+                "coverageGaps": ["List of missing coverage areas", "Missing module X"],
+                "recommendedStrategy": {{
+                    "recommendedTool": "Playwright",
+                    "testingType": "UI / E2E",
+                    "priority": "High",
+                    "target": "Authentication",
+                    "reason": "..."
+                }},
+                "newTestScope": [
+                    {{
+                        "name": "Verify user login",
+                        "description": "Ensure users can log in successfully",
+                        "type": "UI / E2E",
+                        "tool": "Playwright",
+                        "priority": "High"
+                    }}
+                ]
+            }}
+            '''
+            
+            try:
+                ai_test_result = ai_client.generate(ai_test_prompt, "You are an expert QA Architect. Output ONLY valid raw JSON with NO markdown blocks and NO formatting.", api_key, model_name)
+                ai_test_result = ai_test_result.replace("```json", "").replace("```", "").strip()
+                import json
+                ai_strategy_json = json.loads(ai_test_result)
+                test_metrics["aiStrategy"] = ai_strategy_json
+            except Exception as e:
+                print(f"Failed to generate AI test strategy: {e}")
+                test_metrics["aiStrategy"] = {
+                    "testingScope": "Failed to generate dynamic testing strategy.",
+                    "coverageGaps": [],
+                    "recommendedStrategy": {"testingType": "Unknown", "recommendedTool": "Unknown", "target": "Unknown", "priority": "Unknown", "reason": "Unknown"},
+                    "newTestScope": []
+                }
+
+
             # Build a rich facts section so LLM generates grounded analysis
             detected_facts = (
                 f"=== Detected Repository Facts ===\n"
@@ -249,12 +530,11 @@ class AnalysisService:
                 user_prompt = user_prompt[:max_prompt_chars] + "\n... [TRUNCATED due to size limits]"
             
             ai_client = AIFactory.get_client()
-            ai_result = ai_client.generate(user_prompt, system_instruction, api_key, model_name)
-            
-            # Clean JSON formatting if LLM includes markdown
-            cleaned_json = ai_result.replace("```json", "").replace("```", "").strip()
             
             try:
+                ai_result = ai_client.generate(user_prompt, system_instruction, api_key, model_name)
+                # Clean JSON formatting if LLM includes markdown
+                cleaned_json = ai_result.replace("```json", "").replace("```", "").strip()
                 import json
                 brd_data = json.loads(cleaned_json)
                 from app.brd_models import FullBrdReport
@@ -262,18 +542,27 @@ class AnalysisService:
                     brd_summary = FullBrdReport(**brd_data)
                 except Exception as ve:
                     print(f"Validation error in BRD JSON (falling back to unvalidated construct): {ve}")
-                    # Bypass strict validation to salvage the LLM response
                     brd_summary = FullBrdReport.model_construct(**brd_data)
             except Exception as e:
-                print(f"Error parsing BRD JSON completely: {e}\nRaw result: {ai_result}")
-                from app.brd_models import FullBrdReport, Capability, DataStore
+                print(f"Error generating or parsing BRD JSON completely: {e}")
+                
+                source_files = []
+                try:
+                    for root, dirs, files in os.walk(clone_dir):
+                        dirs[:] = [d for d in dirs if d not in ['.git', 'node_modules', 'venv', '__pycache__', 'dist', 'build', 'target', 'out']]
+                        for f in files:
+                            if f.lower().endswith(('.jsx', '.tsx', '.vue', '.html', '.css', '.java', '.py', '.js', '.ts', '.go', '.cs', '.jsp', '.php')):
+                                source_files.append(str(Path(root).joinpath(f).relative_to(clone_dir)).replace('\\', '/'))
+                except Exception as file_e:
+                    print(f"Error collecting source files in fallback: {file_e}")
+
+                from app.brd_models import FullBrdReport, Capability, DataStoreInfo
                 brd_summary = FullBrdReport.model_construct(
                     appName=repo_url.split('/')[-1].replace('.git', ''),
                     appPurposeDesc=f"This application is a {project_info.get('framework_type', 'Software')} project built using {project_info.get('build_tool', 'a standard build tool')}.",
-                    capabilities=[
-                        Capability.model_construct(name="Core Business Logic", description="Handles primary application domain logic."),
-                        Capability.model_construct(name="Data Persistence", description="Stores and retrieves business data.")
-                    ],
+                    capabilities=[],
+                    useCases=[],
+                    sourceFiles=source_files,
                     bizComponents=[
                         "Application Services",
                         "Data Access Layer",
@@ -286,10 +575,13 @@ class AnalysisService:
                         f"Database: {project_info.get('database')}"
                     ],
                     apiGroups=[
-                        f"REST Endpoints (Count: {project_info.get('endpoint_count', 0)})"
+                        __import__('app.brd_models', fromlist=['ApiGroup']).ApiGroup.model_construct(
+                            name="REST Endpoints",
+                            endpoints=[]
+                        )
                     ],
                     primaryDataStores=[
-                        DataStore.model_construct(name=project_info.get('database', 'Database'), description="Main application data store")
+                        DataStoreInfo.model_construct(name=project_info.get('database', 'Database'), description="Main application data store")
                     ],
                     modernizationContext=f"Project contains {len(deprecated_apis)} deprecated API usages and uses {project_type} {current_java_version if is_java else ''}. This baseline establishes functional testing boundaries for migration."
                 )
@@ -313,23 +605,85 @@ class AnalysisService:
                 frameworkVersions=framework_versions,
                 fullBrdReport=brd_summary,
                 errorMessage=None,
-                usedProvider=getattr(ai_client, "last_provider_used", None)
+                usedProvider=getattr(ai_client, "last_provider_used", None),
+                testMetrics=test_metrics,
+                existingTestDetails=test_details
             )
             
-            # Save to cache
+            # Save to PostgreSQL Database
+            from app.database import SessionLocal
+            from app.db_models import Repository, Analysis, TestMetric, AIStrategy
+
+            db = SessionLocal()
             try:
-                import json
-                cache_data = {}
-                if cache_file.exists():
-                    cache_data = json.loads(cache_file.read_text())
-                cache_data[cache_key] = response.model_dump()
-                cache_file.write_text(json.dumps(cache_data))
-            except Exception:
-                pass
+                # 1. Upsert Repository
+                repo_record = db.query(Repository).filter(Repository.repo_url == repo_url).first()
+                if not repo_record:
+                    repo_record = Repository(
+                        repo_url=repo_url,
+                        name=repo_url.split("/")[-1].replace(".git", ""),
+                        commit_sha=commit_hash
+                    )
+                    db.add(repo_record)
+                    db.commit()
+                    db.refresh(repo_record)
+                else:
+                    repo_record.commit_sha = commit_hash
+                    db.commit()
+                
+                # 2. Insert Analysis
+                new_analysis = Analysis(
+                    repository_id=repo_record.id,
+                    project_type=project_type,
+                    framework=project_info.get("framework_type"),
+                    build_tool=project_info.get("build_tool"),
+                    database_type=project_info.get("database"),
+                    status="completed",
+                    full_brd_report=brd_summary.model_dump() if hasattr(brd_summary, "model_dump") else brd_summary,
+                    existing_test_details=test_details
+                )
+                db.add(new_analysis)
+                db.commit()
+                db.refresh(new_analysis)
+                
+                # 3. Insert Metrics
+                new_metric = TestMetric(
+                    analysis_id=new_analysis.id,
+                    total=test_metrics.get("total", 0),
+                    passed=str(test_metrics.get("passed", "Not Executed")),
+                    failed=str(test_metrics.get("failed", "Not Executed")),
+                    testing_types=str(test_metrics.get("type", "Not Detected"))
+                )
+                db.add(new_metric)
+                
+                # 4. Insert AI Strategy
+                ai_strat_dict = test_metrics.get("aiStrategy", {})
+                rec_strat = ai_strat_dict.get("recommendedStrategy", {})
+                new_strategy = AIStrategy(
+                    analysis_id=new_analysis.id,
+                    testing_scope_summary=ai_strat_dict.get("testingScope", ""),
+                    coverage_gaps=ai_strat_dict.get("coverageGaps", []),
+                    recommended_tool=rec_strat.get("recommendedTool", "Unknown"),
+                    testing_type=rec_strat.get("testingType", "Unknown"),
+                    priority=rec_strat.get("priority", "Unknown"),
+                    target=rec_strat.get("target", "Unknown"),
+                    reason=rec_strat.get("reason", "Unknown"),
+                    new_test_scope=ai_strat_dict.get("newTestScope", [])
+                )
+                db.add(new_strategy)
+                db.commit()
+                
+            except Exception as db_err:
+                import traceback
+                traceback.print_exc()
+            finally:
+                db.close()
                 
             return response
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return AnalysisResponse(
                 repoUrl=repo_url,
                 projectType="Unknown",
