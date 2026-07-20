@@ -943,8 +943,8 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
 
     # Run tests in the background (non-blocking)
     async def _run():
+        from app.services.project_runner_service import project_runner_service
         try:
-            from app.services.project_runner_service import project_runner_service
             status = project_runner_service.get_status(repo_name).get("status")
             if status not in ["RUNNING", "RUNNING_API"]:
                 try:
@@ -968,6 +968,12 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
             import traceback
             traceback.print_exc()
             playwright_service._results[repo_name] = playwright_service._error(f"Test execution crashed: {e}")
+        finally:
+            try:
+                print(f"[Playwright Task] Stopping project runner to free port.")
+                await project_runner_service.stop_project(repo_name)
+            except Exception as stop_err:
+                print(f"[Playwright Task] Failed to stop project runner: {stop_err}")
 
     background_tasks.add_task(_run)
     return JSONResponse(content={**detection, "status": "RUNNING"})
