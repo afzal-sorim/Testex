@@ -1,0 +1,1126 @@
+{
+  "sessionId": "c1d4835e-c7b6-4132-9b5a-ad1579752e60",
+  "repoUrl": "https://github.com/ranjini886/Java-Apex-Testing.git",
+  "localPath": "C:\\\\Users\\\\ST-Sivaranjini\\\\New_Functional_Testing-main",
+  "analysisResult": {
+    "repoUrl": "https://github.com/ranjini886/Java-Apex-Testing.git",
+    "projectType": "Java",
+    "isJava": true,
+    "detectedJavaVersion": "8",
+    "buildTool": "Unknown",
+    "frameworkType": "Plain Java",
+    "database": "None",
+    "packagingType": "jar",
+    "isMultiModule": false,
+    "hasFrontend": true,
+    "frontendFramework": "React",
+    "endpointCount": 89,
+    "riskLevel": "Medium",
+    "techDetails": {
+      "has_frontend": {
+        "value": "True",
+        "reason": "Detected react in package.json",
+        "evidenceFile": "New_Functional_Testing-main/frontend/package.json",
+        "evidenceLine": 1
+      },
+      "frontend_framework": {
+        "value": "React",
+        "reason": "Detected react in package.json",
+        "evidenceFile": "New_Functional_Testing-main/frontend/package.json",
+        "evidenceLine": 1
+      },
+      "language": {
+        "value": "Java 8",
+        "reason": "Default fallback version (no specific version detected)",
+        "evidenceFile": null,
+        "evidenceLine": null
+      },
+      "riskLevel": {
+        "value": "Medium",
+        "reason": "Java 8 is very old (+3)",
+        "evidenceFile": null,
+        "evidenceLine": null
+      }
+    },
+    "deprecatedApis": [],
+    "dependencies": [],
+    "frameworkVersions": {},
+    "fullBrdReport": {
+      "orgInitial": "",
+      "orgName": "",
+      "appName": "Java-Apex-Testing",
+      "docVersion": "",
+      "docStatus": "",
+      "docDate": "",
+      "repoUrl": "",
+      "primaryLang": "",
+      "platform": "",
+      "environment": "",
+      "techStackSummary": [
+        "Language: Java",
+        "Framework: Plain Java",
+        "Build Tool: Unknown",
+        "Database: None"
+      ],
+      "docPurposeDesc": "",
+      "appPurposeDesc": "This application is a Plain Java project built using Unknown.",
+      "modernizationContext": "Project contains 0 deprecated API usages and uses Java 8. This baseline establishes functional testing boundaries for migration.",
+      "processingModes": "",
+      "totalPrograms": 0,
+      "totalLoc": 0,
+      "totalOrphanFiles": 0,
+      "updateTracking": [],
+      "staticCodeAnalysis": {
+        "programTypes": [],
+        "totalPhyFiles": 0,
+        "totalUsedFiles": 0,
+        "totalOrphFiles": 0,
+        "totalPhyLoc": 0,
+        "totalUsedLoc": 0,
+        "totalOrphLoc": 0
+      },
+      "detailedPurpose": "",
+      "objectives": [],
+      "inScope": [],
+      "outOfScope": [],
+      "capabilities": [
+        {
+          "name": "Core Business Logic",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        },
+        {
+          "name": "Data Persistence",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        }
+      ],
+      "architectureIntro": "",
+      "actors": [],
+      "uiComponents": [],
+      "bizComponents": [
+        "Application Services",
+        "Data Access Layer",
+        "API Controllers"
+      ],
+      "dataAccessComponents": [],
+      "dataStores": [],
+      "externalSystems": [],
+      "archPatterns": [],
+      "businessFlowOverview": "",
+      "fullModuleBreakdown": "",
+      "languages": [],
+      "onlineEnvironments": [],
+      "databases": [],
+      "jobControlDesc": "",
+      "jobSchedulingDesc": "",
+      "middlewares": [],
+      "securityFrameworkDesc": "",
+      "devTools": [],
+      "osDesc": "",
+      "dataEntitiesIntro": "",
+      "primaryDataStores": [
+        {
+          "name": "None",
+          "description": "Main application data store"
+        }
+      ],
+      "dataEntryPoints": [],
+      "dataProcessingWorkflows": [],
+      "dataExitPoints": [],
+      "criticalDataDependencies": [],
+      "dbSchemaIntro": "",
+      "keyRelationships": [],
+      "onlineProcessIntro": "",
+      "onlineTransactions": [],
+      "batchProcessIntro": "",
+      "batchCycles": [],
+      "jobStreamDependencyDesc": "",
+      "keyTransactions": [],
+      "keyScreenFlows": [],
+      "useCases": [],
+      "classModelIntro": "",
+      "classes": [],
+      "activityFlows": [],
+      "sequenceDiagrams": [],
+      "inboundIntegrations": [],
+      "outboundIntegrations": [],
+      "integrationTechs": [],
+      "apiGeneralNote": "",
+      "apiGroups": [
+        {
+          "name": "REST Endpoints",
+          "endpoints": []
+        }
+      ],
+      "authNfrs": [],
+      "authzNfrs": [],
+      "dataSecurityNfrs": [],
+      "availabilityNfrs": [],
+      "performanceNfrs": [],
+      "scalabilityNfrs": [],
+      "complianceNfrs": [],
+      "technicalRisks": [],
+      "operationalChallenges": [],
+      "securityConcerns": [],
+      "maintenanceIssues": [],
+      "fileGroups": [],
+      "orphanFilesByCategory": [],
+      "securityChecklist": [],
+      "piiAnalysis": [],
+      "acceptanceCriteria": [],
+      "knownLimitations": [],
+      "supportChannels": [],
+      "escalationMatrix": [],
+      "roles": [],
+      "glossary": [],
+      "sourceFiles": [],
+      "processingSummaryList": [],
+      "revisionHistory": []
+    },
+    "errorMessage": null,
+    "usedProvider": "groq",
+    "sessionId": "c1d4835e-c7b6-4132-9b5a-ad1579752e60",
+    "testMetrics": {
+      "total": 107,
+      "passed": "Not Available",
+      "failed": "Not Available",
+      "skipped": "Not Available",
+      "type": "unittest, Playwright",
+      "aiStrategy": {
+        "testingScope": "The AI analyzed the existing test coverage and found that it includes 107 tests using unittest and Playwright frameworks, covering various functional tests such as analysis results, UI component validation, migration execution, migration report, and negative/error handling.",
+        "coverageGaps": [
+          "API testing",
+          "Security testing",
+          "Performance testing",
+          "Compatibility testing with different Java versions",
+          "Error handling for edge cases"
+        ],
+        "recommendedStrategy": {
+          "recommendedTool": "Playwright",
+          "testingType": "UI / E2E",
+          "priority": "High",
+          "target": "Authentication and Authorization",
+          "reason": "To ensure the security and integrity of the application, it is crucial to have comprehensive tests for authentication and authorization, which are currently not adequately covered."
+        },
+        "newTestScope": [
+          {
+            "name": "Verify user login",
+            "description": "Ensure users can log in successfully with valid credentials",
+            "type": "UI / E2E",
+            "tool": "Playwright",
+            "priority": "High"
+          },
+          {
+            "name": "Verify user registration",
+            "description": "Ensure new users can register successfully",
+            "type": "UI / E2E",
+            "tool": "Playwright",
+            "priority": "Medium"
+          },
+          {
+            "name": "Test API endpoints",
+            "description": "Verify that API endpoints are functioning correctly and returning expected responses",
+            "type": "API",
+            "tool": "Postman",
+            "priority": "High"
+          },
+          {
+            "name": "Test security vulnerabilities",
+            "description": "Identify and exploit potential security vulnerabilities in the application",
+            "type": "Security",
+            "tool": "OWASP ZAP",
+            "priority": "Critical"
+          }
+        ]
+      }
+    },
+    "existingTestDetails": {
+      "frameworks": [
+        "unittest",
+        "Playwright"
+      ],
+      "languages": [
+        "Python",
+        "TypeScript"
+      ],
+      "testTypes": [
+        "Unit / Integration",
+        "UI / E2E"
+      ],
+      "testCases": [
+        {
+          "name": "Analysis Results \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Analysis completes with success banner",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Detected Java version is displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Build tool (Maven) is displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Dependencies are displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) Deprecated APIs are displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "6) AI Migration recommendations are displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "7) Proceed to Migration button is visible for upgradable projects",
+          "file": "New_Functional_Testing-main/frontend/tests/analysis-results.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "UI Component Validation \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/migrated-ui-validation.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Dashboard loads with stats and charts",
+          "file": "New_Functional_Testing-main/frontend/tests/migrated-ui-validation.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Sidebar navigation works for all tabs",
+          "file": "New_Functional_Testing-main/frontend/tests/migrated-ui-validation.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "6) No JavaScript console errors during navigation",
+          "file": "New_Functional_Testing-main/frontend/tests/migrated-ui-validation.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Migration Execution \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Target project URL is pre-filled from analysis",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Target Java version radio buttons are visible and clickable",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Default target version is Java 21",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Run Migration button is enabled when repo URL exists",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) Run Migration button disabled without repo",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "6) Clicking Run Migration starts processing",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "7) Progress indicator appears during migration",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "8) Migration completes with success banner",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-execution.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Migration Report \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Report page loads with header",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Metadata table is displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Modified files are listed",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Refactoring logs are displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) Download PDF button exists with correct URL",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-report.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Migration Success \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Build status shows ",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) LLM Execution Log is displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Modified files list is displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Download PDF Report link exists",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) View Migration Report button exists and navigates",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "6) Migration history entry is created",
+          "file": "New_Functional_Testing-main/frontend/tests/migration-success.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Negative & Error Handling \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Repository Analysis",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Empty repository URL submission is blocked",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Invalid URL format shows browser validation",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Non-Java repository shows applicable warning",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Private repository error is handled",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) Repository not found (404) error is handled",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "6) Backend server unavailable",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Migration Center",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "8) Migration without prior analysis shows warning",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "9) Migration API failure is handled",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "10) Build failure result is handled correctly",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Reports",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "11) Empty migration report page shows appropriate message",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "12) Empty conversion report page shows appropriate message",
+          "file": "New_Functional_Testing-main/frontend/tests/negative-tests.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Repository Analysis Flow \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "a) Application Launch \u2014 Page loads with all core elements visible",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "a2) Application Launch \u2014 URL input has correct placeholder text",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "a3) Application Launch \u2014 View mode tabs are visible",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "b) Repository URL Input \u2014 Valid URL is accepted and displayed",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "b2) Repository URL Input \u2014 Multiple valid URLs can be entered sequentially",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "b3) Repository URL Input \u2014 Input field can be cleared",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "b4) Repository URL Input \u2014 Empty submission is blocked by HTML5 validation",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "b5) Repository URL Input \u2014 Invalid URL triggers HTML5 validation",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "c) Analyze Button \u2014 Clicking triggers loading state",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "c2) Analyze Button \u2014 Input is disabled during analysis",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "c3) Analyze Button \u2014 Progress indicator appears during analysis",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "d) Sidebar Navigation \u2014 All menu items are visible",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "d2) Sidebar Navigation \u2014 Can navigate to Dashboard and back",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "e) View Mode \u2014 Can switch between Overview and Graphical View",
+          "file": "New_Functional_Testing-main/frontend/tests/repository-analysis.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "Run Migrated Project \u2014 Functional Tests",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "1) Project Runner Dashboard is visible after build success",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "2) Run Project button is clickable",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "3) Clicking Run Project triggers start",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "4) Log Console is present",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "5) Live Application Preview pane is visible",
+          "file": "New_Functional_Testing-main/frontend/tests/run-migrated-project.spec.ts",
+          "framework": "Playwright",
+          "type": "UI / E2E",
+          "module": "frontend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_create_list_export_and_delete_document",
+          "file": "New_Functional_Testing-main/python_backend/tests/test_technical_documents.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_upload_html_document",
+          "file": "New_Functional_Testing-main/python_backend/tests/test_technical_documents.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_404",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_no_auth",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_bad_auth",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_token_auth",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_anonymous",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_unconfirmed_account",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_posts",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_users",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_comments",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_api.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_app_exists",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_basics.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_app_is_testing",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_basics.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_home_page",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_client.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_register_and_login",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_client.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_admin_home_page",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_selenium.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_password_setter",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_no_password_getter",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_password_verification",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_password_salts_are_random",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_valid_confirmation_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_invalid_confirmation_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_expired_confirmation_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_valid_reset_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_invalid_reset_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_valid_email_change_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_invalid_email_change_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_duplicate_email_change_token",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_user_role",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_moderator_role",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_administrator_role",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_anonymous_user",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_timestamps",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_ping",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_gravatar",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_follows",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        },
+        {
+          "name": "test_to_json",
+          "file": "New_Functional_Testing-main/python_backend/workspace/flasky/tests/test_user_model.py",
+          "framework": "unittest",
+          "type": "Unit / Integration",
+          "module": "python_backend",
+          "status": "Not Available"
+        }
+      ]
+    }
+  },
+  "workflowState": {
+    "analysisCompleted": true,
+    "runnerCompleted": false
+  },
+  "migrationResult": null,
+  "stats": {
+    "reposAnalyzed": 0,
+    "migrationsRun": 0,
+    "filesConverted": 0
+  },
+  "migrations": []
+}

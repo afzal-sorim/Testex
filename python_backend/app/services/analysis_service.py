@@ -339,6 +339,7 @@ class AnalysisService:
                             deprecatedApis=[],
                             dependencies=[],
                             frameworkVersions={},
+                            techDetails=db_analysis.tech_details,
                             fullBrdReport=db_analysis.full_brd_report,
                             errorMessage=None,
                             usedProvider="database",
@@ -357,7 +358,7 @@ class AnalysisService:
                 if sub_dir:
                     build_dir = sub_dir
             
-            current_java_version = self.detect_java_version(build_dir)
+            current_java_version, java_reason, java_file, java_line = self.detect_java_version(build_dir)
             dependencies = []
             framework_versions = {}
             self.parse_dependencies_and_frameworks(build_dir, dependencies, framework_versions)
@@ -386,7 +387,7 @@ class AnalysisService:
                 else:
                     recommendation = "Migrate to Java 17"
                 
-                risk_level = self._calculate_risk_level(version_int, deprecated_apis, project_info)
+                risk_level, risk_reason = self._calculate_risk_level(version_int, deprecated_apis, project_info)
                 query = f"Migrating Java project. Current version: {current_java_version}. Frameworks: {framework_versions}. Framework type: {project_info.get('framework_type')}."
                 system_instruction = (
                     "You are an expert Java architect advising on migration paths. "
@@ -396,6 +397,7 @@ class AnalysisService:
             else:
                 recommendation = f"Ensure {project_type} project builds, installs dependencies, and runs properly."
                 risk_level = "Low"
+                risk_reason = "Non-Java projects default to Low risk"
                 query = f"Analyzing {project_type} project. Build tool: {project_info.get('build_tool')}. Framework: {project_info.get('framework_type')}."
                 system_instruction = (
                     f"You are an expert {project_type} architect advising on project setup, execution, and potential local environment fixes. "
@@ -545,24 +547,14 @@ class AnalysisService:
                     brd_summary = FullBrdReport.model_construct(**brd_data)
             except Exception as e:
                 print(f"Error generating or parsing BRD JSON completely: {e}")
-                
-                source_files = []
-                try:
-                    for root, dirs, files in os.walk(clone_dir):
-                        dirs[:] = [d for d in dirs if d not in ['.git', 'node_modules', 'venv', '__pycache__', 'dist', 'build', 'target', 'out']]
-                        for f in files:
-                            if f.lower().endswith(('.jsx', '.tsx', '.vue', '.html', '.css', '.java', '.py', '.js', '.ts', '.go', '.cs', '.jsp', '.php')):
-                                source_files.append(str(Path(root).joinpath(f).relative_to(clone_dir)).replace('\\', '/'))
-                except Exception as file_e:
-                    print(f"Error collecting source files in fallback: {file_e}")
-
                 from app.brd_models import FullBrdReport, Capability, DataStoreInfo
                 brd_summary = FullBrdReport.model_construct(
                     appName=repo_url.split('/')[-1].replace('.git', ''),
                     appPurposeDesc=f"This application is a {project_info.get('framework_type', 'Software')} project built using {project_info.get('build_tool', 'a standard build tool')}.",
-                    capabilities=[],
-                    useCases=[],
-                    sourceFiles=source_files,
+                    capabilities=[
+                        Capability.model_construct(name="Core Business Logic", description="Handles primary application domain logic."),
+                        Capability.model_construct(name="Data Persistence", description="Stores and retrieves business data.")
+                    ],
                     bizComponents=[
                         "Application Services",
                         "Data Access Layer",
@@ -583,8 +575,31 @@ class AnalysisService:
                     primaryDataStores=[
                         DataStoreInfo.model_construct(name=project_info.get('database', 'Database'), description="Main application data store")
                     ],
-                    modernizationContext=f"Project contains {len(deprecated_apis)} deprecated API usages and uses {project_type} {current_java_version if is_java else ''}. This baseline establishes functional testing boundaries for migration."
+                    modernizationContext=f"Project contains {len(deprecated_apis)} deprecated API usages and uses {project_type} {current_java_version if is_java else ''}. This baseline establishes boundaries for automated functional testing.",
                 )
+
+            tech_details = project_info.get("tech_details", {})
+            if is_java:
+                tech_details["language"] = {
+                    "value": f"Java {current_java_version}",
+                    "reason": java_reason,
+                    "evidenceFile": java_file,
+                    "evidenceLine": java_line
+                }
+            else:
+                tech_details["language"] = {
+                    "value": project_type,
+                    "reason": f"Detected based on file extensions and {project_info.get('build_tool')} build tool.",
+                    "evidenceFile": None,
+                    "evidenceLine": None
+                }
+                
+            tech_details["riskLevel"] = {
+                "value": risk_level,
+                "reason": risk_reason,
+                "evidenceFile": None,
+                "evidenceLine": None
+            }
 
             response = AnalysisResponse(
                 repoUrl=repo_url,
@@ -600,6 +615,7 @@ class AnalysisService:
                 frontendFramework=project_info.get("frontend_framework"),
                 endpointCount=project_info.get("endpoint_count", 0),
                 riskLevel=risk_level,
+                techDetails=tech_details,
                 deprecatedApis=deprecated_apis,
                 dependencies=dependencies,
                 frameworkVersions=framework_versions,
@@ -640,7 +656,8 @@ class AnalysisService:
                     database_type=project_info.get("database"),
                     status="completed",
                     full_brd_report=brd_summary.model_dump() if hasattr(brd_summary, "model_dump") else brd_summary,
-                    existing_test_details=test_details
+                    existing_test_details=test_details,
+                    tech_details=tech_details
                 )
                 db.add(new_analysis)
                 db.commit()
@@ -928,38 +945,42 @@ class AnalysisService:
         except OSError:
             pass
 
-    def detect_java_version(self, repo_dir: Path) -> str:
+    def detect_java_version(self, repo_dir: Path) -> tuple:
         pom = repo_dir / "pom.xml"
         if pom.exists():
             content = pom.read_text(encoding='utf-8', errors='ignore')
             patterns = [
-                r"<java\.version>(.*?)</java\.version>",
-                r"<maven\.compiler\.source>(.*?)</maven\.compiler\.source>",
-                r"<maven\.compiler\.target>(.*?)</maven\.compiler\.target>",
-                r"<maven\.compiler\.release>(.*?)</maven\.compiler\.release>"
+                (r"<java\.version>(.*?)</java\.version>", "Found java.version tag in pom.xml"),
+                (r"<maven\.compiler\.source>(.*?)</maven\.compiler\.source>", "Found maven.compiler.source tag in pom.xml"),
+                (r"<maven\.compiler\.target>(.*?)</maven\.compiler\.target>", "Found maven.compiler.target tag in pom.xml"),
+                (r"<maven\.compiler\.release>(.*?)</maven\.compiler\.release>", "Found maven.compiler.release tag in pom.xml")
             ]
-            for p in patterns:
+            for p, reason in patterns:
                 match = re.search(p, content)
                 if match:
-                    return self.normalize_java_version(match.group(1).strip())
+                    line_num = content[:match.start()].count('\n') + 1
+                    return self.normalize_java_version(match.group(1).strip()), reason, "pom.xml", line_num
 
         gradle = repo_dir / "build.gradle"
+        file_name = "build.gradle"
         if not gradle.exists():
             gradle = repo_dir / "build.gradle.kts"
+            file_name = "build.gradle.kts"
             
         if gradle.exists():
             content = gradle.read_text(encoding='utf-8', errors='ignore')
             patterns = [
-                r"sourceCompatibility\s*=\s*['\"]?(1\.[0-8]|[0-9]+)['\"]?",
-                r"targetCompatibility\s*=\s*['\"]?(1\.[0-8]|[0-9]+)['\"]?",
-                r"languageVersion\s*=\s*JavaLanguageVersion\.of\((.*?)\)"
+                (r"sourceCompatibility\s*=\s*['\"]?(1\.[0-8]|[0-9]+)['\"]?", f"Found sourceCompatibility in {file_name}"),
+                (r"targetCompatibility\s*=\s*['\"]?(1\.[0-8]|[0-9]+)['\"]?", f"Found targetCompatibility in {file_name}"),
+                (r"languageVersion\s*=\s*JavaLanguageVersion\.of\((.*?)\)", f"Found languageVersion toolchain in {file_name}")
             ]
-            for p in patterns:
+            for p, reason in patterns:
                 match = re.search(p, content)
                 if match:
-                    return self.normalize_java_version(match.group(1).strip())
+                    line_num = content[:match.start()].count('\n') + 1
+                    return self.normalize_java_version(match.group(1).strip()), reason, file_name, line_num
                     
-        return "8"
+        return "8", "Default fallback version (no specific version detected)", None, None
 
     def normalize_java_version(self, version: str) -> str:
         if version.startswith("1."):
@@ -1002,91 +1023,115 @@ class AnalysisService:
             "has_frontend": False,
             "frontend_framework": None,
             "endpoint_count": 0,
+            "tech_details": {}
         }
+        
+        def set_detail(key, value, reason, file, line=None):
+            info[key] = value
+            info["tech_details"][key] = {
+                "value": str(value),
+                "reason": reason,
+                "evidenceFile": file,
+                "evidenceLine": line
+            }
 
         if (build_dir / "pom.xml").exists():
-            info["build_tool"] = "Maven"
+            set_detail("build_tool", "Maven", "Found pom.xml in project root", "pom.xml", 1)
         elif (build_dir / "build.gradle.kts").exists():
-            info["build_tool"] = "Gradle Kotlin DSL"
+            set_detail("build_tool", "Gradle Kotlin DSL", "Found build.gradle.kts in project root", "build.gradle.kts", 1)
         elif (build_dir / "build.gradle").exists():
-            info["build_tool"] = "Gradle"
+            set_detail("build_tool", "Gradle", "Found build.gradle in project root", "build.gradle", 1)
         elif (build_dir / "package.json").exists():
             if (build_dir / "pnpm-lock.yaml").exists():
-                info["build_tool"] = "pnpm"
+                set_detail("build_tool", "pnpm", "Found pnpm-lock.yaml", "pnpm-lock.yaml", 1)
             elif (build_dir / "yarn.lock").exists():
-                info["build_tool"] = "yarn"
+                set_detail("build_tool", "yarn", "Found yarn.lock", "yarn.lock", 1)
             elif (build_dir / "bun.lockb").exists():
-                info["build_tool"] = "bun"
+                set_detail("build_tool", "bun", "Found bun.lockb", "bun.lockb", 1)
             else:
-                info["build_tool"] = "npm"
-            info["framework_type"] = "Node.js"
+                set_detail("build_tool", "npm", "Found package.json", "package.json", 1)
+            set_detail("framework_type", "Node.js", "Node.js project detected via package.json", "package.json", 1)
         elif (build_dir / "pyproject.toml").exists():
             content = (build_dir / "pyproject.toml").read_text(errors='ignore')
             if "poetry" in content:
-                info["build_tool"] = "Poetry"
+                set_detail("build_tool", "Poetry", "Poetry config found in pyproject.toml", "pyproject.toml", 1)
             elif "uv" in content:
-                info["build_tool"] = "uv"
+                set_detail("build_tool", "uv", "uv config found in pyproject.toml", "pyproject.toml", 1)
             else:
-                info["build_tool"] = "pip (pyproject.toml)"
-            info["framework_type"] = "Python"
+                set_detail("build_tool", "pip (pyproject.toml)", "pyproject.toml found", "pyproject.toml", 1)
+            set_detail("framework_type", "Python", "Python project detected via pyproject.toml", "pyproject.toml", 1)
         elif (build_dir / "requirements.txt").exists():
-            info["build_tool"] = "pip"
-            info["framework_type"] = "Python"
+            set_detail("build_tool", "pip", "Found requirements.txt", "requirements.txt", 1)
+            set_detail("framework_type", "Python", "Python project detected via requirements.txt", "requirements.txt", 1)
         elif list(build_dir.glob("*.csproj")):
-            info["build_tool"] = "dotnet"
-            info["framework_type"] = ".NET"
+            set_detail("build_tool", "dotnet", "Found .csproj file", "project.csproj", 1)
+            set_detail("framework_type", ".NET", ".NET project detected", "project.csproj", 1)
         elif (build_dir / "Cargo.toml").exists():
-            info["build_tool"] = "cargo"
-            info["framework_type"] = "Rust"
+            set_detail("build_tool", "cargo", "Found Cargo.toml", "Cargo.toml", 1)
+            set_detail("framework_type", "Rust", "Rust project detected", "Cargo.toml", 1)
 
         build_content = ""
+        build_file_name = ""
         for bf in [build_dir / "pom.xml", build_dir / "build.gradle", build_dir / "build.gradle.kts"]:
             if bf.exists():
                 try:
                     build_content = bf.read_text(encoding="utf-8", errors="ignore").lower()
+                    build_file_name = bf.name
                 except Exception:
                     pass
                 break
 
+        def find_line(keyword):
+            if not build_content: return 1
+            lines = build_content.splitlines()
+            for i, line in enumerate(lines):
+                if keyword in line:
+                    return i + 1
+            return 1
+
         if build_content:
             if "spring-boot" in build_content:
                 if "thymeleaf" in build_content:
-                    info["framework_type"] = "Spring Boot / Thymeleaf"
+                    set_detail("framework_type", "Spring Boot / Thymeleaf", "Spring Boot framework with Thymeleaf templating engine detected", build_file_name, find_line("thymeleaf"))
                 elif "jsp" in build_content or "jstl" in build_content or "tomcat-embed-jasper" in build_content:
-                    info["framework_type"] = "Spring Boot / JSP"
+                    set_detail("framework_type", "Spring Boot / JSP", "Spring Boot framework with legacy JSP templating detected", build_file_name, find_line("jasper") or find_line("jsp"))
                 elif "spring-boot-starter-web" in build_content or "spring-webmvc" in build_content:
-                    info["framework_type"] = "Spring Boot / Web MVC"
+                    set_detail("framework_type", "Spring Boot / Web MVC", "Spring Boot Web MVC architecture detected via starter dependencies", build_file_name, find_line("spring-boot-starter-web"))
                 elif "spring-boot-starter-webflux" in build_content:
-                    info["framework_type"] = "Spring Boot / WebFlux (Reactive)"
+                    set_detail("framework_type", "Spring Boot / WebFlux (Reactive)", "Reactive Spring WebFlux architecture detected", build_file_name, find_line("webflux"))
                 elif "spring-boot-starter-data" in build_content:
-                    info["framework_type"] = "Spring Boot / Data Only"
+                    set_detail("framework_type", "Spring Boot / Data Only", "Data-centric Spring Boot application detected without web starters", build_file_name, find_line("spring-boot-starter-data"))
                 else:
-                    info["framework_type"] = "Spring Boot"
+                    set_detail("framework_type", "Spring Boot", "Core Spring Boot framework dependencies detected", build_file_name, find_line("spring-boot"))
             elif "spring-webmvc" in build_content or "spring-web" in build_content:
-                info["framework_type"] = "Spring MVC (Non-Boot)"
+                set_detail("framework_type", "Spring MVC (Non-Boot)", "Traditional Spring MVC framework detected without Spring Boot auto-configuration", build_file_name, find_line("spring-webmvc"))
             elif "javax.servlet" in build_content or "jakarta.servlet" in build_content or "servlet-api" in build_content:
-                info["framework_type"] = "JSP/Servlet"
+                set_detail("framework_type", "JSP/Servlet", "Legacy Java Servlet/JSP web architecture detected", build_file_name, find_line("servlet-api"))
             elif "javafx" in build_content:
-                info["framework_type"] = "JavaFX"
+                set_detail("framework_type", "JavaFX", "Desktop JavaFX application framework detected", build_file_name, find_line("javafx"))
 
             if "mysql-connector" in build_content or "com.mysql" in build_content:
-                info["database"] = "MySQL"
+                set_detail("database", "MySQL", "MySQL database driver connector identified in dependencies", build_file_name, find_line("mysql-connector") or find_line("com.mysql"))
             elif "postgresql" in build_content or "org.postgresql" in build_content:
-                info["database"] = "PostgreSQL"
+                set_detail("database", "PostgreSQL", "PostgreSQL database driver identified in dependencies", build_file_name, find_line("postgresql"))
             elif "mssql" in build_content or "sqlserver" in build_content:
-                info["database"] = "SQL Server"
+                set_detail("database", "SQL Server", "Microsoft SQL Server driver identified in dependencies", build_file_name, find_line("mssql"))
             elif "oracle" in build_content and "jdbc" in build_content:
-                info["database"] = "Oracle"
+                set_detail("database", "Oracle", "Oracle JDBC driver identified in dependencies", build_file_name, find_line("oracle"))
             elif "mongodb" in build_content or "spring-data-mongodb" in build_content:
-                info["database"] = "MongoDB"
+                set_detail("database", "MongoDB", "MongoDB NoSQL driver identified in dependencies", build_file_name, find_line("mongodb"))
             elif "com.h2database" in build_content or "h2" in build_content:
-                info["database"] = "H2 (Embedded)"
+                set_detail("database", "H2 (Embedded)", "H2 embedded in-memory database identified", build_file_name, find_line("h2database") or find_line("h2"))
 
             if "<packaging>war</packaging>" in build_content or "apply plugin: 'war'" in build_content or 'id "war"' in build_content:
-                info["packaging_type"] = "war"
+                set_detail("packaging_type", "war", "Legacy Web Application Archive (WAR) packaging explicitly configured", build_file_name, find_line("war"))
+            else:
+                set_detail("packaging_type", "jar", "Standard Java Archive (JAR) deployment packaging identified", build_file_name, 1)
 
             if "<modules>" in build_content or "subprojects" in build_content or "include(" in build_content:
-                info["is_multi_module"] = True
+                set_detail("is_multi_module", True, "Multi-module project architecture with explicit sub-projects defined", build_file_name, find_line("<modules>") or find_line("subprojects") or find_line("include("))
+            else:
+                set_detail("is_multi_module", False, "Standard monolithic project structure without sub-modules", build_file_name, 1)
 
         for package_json in clone_dir.rglob("package.json"):
             if any(skip in package_json.parts for skip in ("node_modules", "target", "build", ".git")):
@@ -1095,18 +1140,19 @@ class AnalysisService:
                 import json
                 pkg = json.loads(package_json.read_text(encoding="utf-8", errors="ignore"))
                 deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
+                rel_path = package_json.relative_to(clone_dir).as_posix()
                 if any(k.startswith("@angular") for k in deps):
-                    info["has_frontend"] = True
-                    info["frontend_framework"] = "Angular"
+                    set_detail("has_frontend", True, "Detected @angular in package.json", rel_path, 1)
+                    set_detail("frontend_framework", "Angular", "Detected @angular in package.json", rel_path, 1)
                 elif "react" in deps or "react-dom" in deps:
-                    info["has_frontend"] = True
-                    info["frontend_framework"] = "React"
+                    set_detail("has_frontend", True, "Detected react in package.json", rel_path, 1)
+                    set_detail("frontend_framework", "React", "Detected react in package.json", rel_path, 1)
                 elif "vue" in deps:
-                    info["has_frontend"] = True
-                    info["frontend_framework"] = "Vue"
+                    set_detail("has_frontend", True, "Detected vue in package.json", rel_path, 1)
+                    set_detail("frontend_framework", "Vue", "Detected vue in package.json", rel_path, 1)
                 else:
-                    info["has_frontend"] = True
-                    info["frontend_framework"] = "Node.js"
+                    set_detail("has_frontend", True, "Found package.json", rel_path, 1)
+                    set_detail("frontend_framework", "Node.js", "Found package.json", rel_path, 1)
                 break
             except Exception:
                 pass
@@ -1114,13 +1160,13 @@ class AnalysisService:
         if not info["has_frontend"]:
             for pattern in ("src/main/resources/templates", "src/main/webapp", "src/main/resources/static"):
                 if (build_dir / pattern).exists():
-                    info["has_frontend"] = True
+                    set_detail("has_frontend", True, f"Found static web directory: {pattern}", pattern, 1)
                     if "Thymeleaf" in info["framework_type"]:
-                        info["frontend_framework"] = "Thymeleaf"
+                        set_detail("frontend_framework", "Thymeleaf", f"Framework is Thymeleaf and found {pattern}", pattern, 1)
                     elif "JSP" in info["framework_type"]:
-                        info["frontend_framework"] = "JSP"
+                        set_detail("frontend_framework", "JSP", f"Framework is JSP and found {pattern}", pattern, 1)
                     else:
-                        info["frontend_framework"] = "Static HTML"
+                        set_detail("frontend_framework", "Static HTML", f"Found static web directory: {pattern}", pattern, 1)
                     break
 
         endpoint_count = 0
@@ -1179,27 +1225,46 @@ class AnalysisService:
                 pass
         return found
 
-    def _calculate_risk_level(self, current_version: int, deprecated_apis: list, project_info: dict) -> str:
+    def _calculate_risk_level(self, current_version: int, deprecated_apis: list, project_info: dict) -> tuple:
         score = 0
+        reasons = []
         if current_version <= 8:
             score += 3
+            reasons.append(f"Legacy Java {current_version} environment requires modernization")
         elif current_version <= 11:
             score += 2
+            reasons.append(f"Outdated Java {current_version} environment")
         elif current_version <= 16:
             score += 1
-        score += min(len(deprecated_apis), 3)
+            reasons.append(f"Non-LTS Java {current_version} environment")
+            
+        if deprecated_apis:
+            score += min(len(deprecated_apis), 3)
+            reasons.append(f"Presence of {len(deprecated_apis)} deprecated API usages requiring remediation")
+            
         if project_info.get("is_multi_module"):
             score += 1
+            reasons.append("Multi-module architectural complexity")
+            
         if project_info.get("database") not in ("None", "H2 (Embedded)", None):
             score += 1
+            reasons.append(f"External database dependency ({project_info.get('database')})")
+            
         if project_info.get("packaging_type") == "war":
             score += 1
+            reasons.append("Legacy WAR packaging relying on external application servers")
+
+        reason_str = "; ".join(reasons) if reasons else "Modern technology stack with no major risks identified."
+        
+        percentage = min(100, int((score / 10.0) * 100))
+        if score == 0:
+            percentage = 5
 
         if score >= 6:
-            return "High"
+            return f"High ({percentage}%)", reason_str
         elif score >= 3:
-            return "Medium"
-        return "Low"
+            return f"Medium ({percentage}%)", reason_str
+        return f"Low ({percentage}%)", reason_str
 
     def find_build_file_directory(self, root_dir: Path) -> Path:
         for child in root_dir.iterdir():

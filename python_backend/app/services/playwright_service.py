@@ -115,12 +115,19 @@ class PlaywrightService:
 
     def get_status(self, repo_name: str, project_dir=None) -> Dict[str, Any]:
         """Return the latest status for repo_name by checking the disk."""
-        # Keep RUNNING state if background task is active
-        if repo_name in self._results and self._results[repo_name].get("status") == "RUNNING":
-            return self._results[repo_name]
+        # Keep active/completed/error states if background task set them
+        if repo_name in self._results:
+            cached_status = self._results[repo_name].get("status")
+            # Always preserve RUNNING — disk detection must NOT override an active run
+            if cached_status == "RUNNING":
+                return self._results[repo_name]
+            # Also preserve terminal states set by the background task
+            if cached_status in ("ERROR", "FAILED", "PASSED", "COMPLETED", "SUCCESS"):
+                return self._results[repo_name]
             
         if project_dir and Path(project_dir).exists():
             status = self.detect_playwright(Path(project_dir))
+            # If detect_playwright parsed actual test-results.json, set the status to overall status (e.g. PASSED / FAILED)
             self._results[repo_name] = status
             return status
             
@@ -430,8 +437,8 @@ test.describe('Navigation & Core Routing', () => {
         if json_report_path.exists():
             json_report_path.unlink()
 
-        # Step 1: npm install (only if node_modules is missing)
-        if not (project_dir / "node_modules").exists():
+        # Step 1: npm install (only if node_modules/ or @playwright/test is missing)
+        if not (project_dir / "node_modules").exists() or not (project_dir / "node_modules" / "@playwright" / "test").exists():
             ok, output = await self._run_subprocess(
                 ["npm", "install", "--prefer-offline"],
                 project_dir,

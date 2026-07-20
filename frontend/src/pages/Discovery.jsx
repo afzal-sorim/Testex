@@ -77,6 +77,70 @@ const TreeNode = ({ node, level = 0, onSelect, selectedPath, currentPath = '' })
   );
 };
 
+const TechCard = ({ icon, label, value, detail, onFileClick }) => {
+  const [flipped, setFlipped] = useState(false);
+  
+  if (!detail) {
+    return (
+      <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] hover:shadow-md transition-all duration-300">
+         <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0">
+           {icon}
+         </div>
+         <div className="overflow-hidden">
+           <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">{label}</div>
+           <div className="text-[16px] font-bold text-[#101828] truncate w-full" title={value}>{value}</div>
+         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="relative rounded-xl cursor-pointer"
+      style={{ perspective: '1000px', height: '82px' }}
+      onClick={() => setFlipped(!flipped)}
+    >
+      <motion.div
+        className="w-full h-full relative"
+        initial={false}
+        animate={{ rotateY: flipped ? 180 : 0, scale: flipped ? 1.05 : 1 }}
+        transition={{ duration: 0.5, type: 'spring', stiffness: 200, damping: 20 }}
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Front */}
+        <div 
+          className="absolute w-full h-full p-4 flex items-center gap-4 bg-white rounded-xl border border-slate-200 hover:border-[#5B5FF6] hover:shadow-lg transition-all duration-300"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+           <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0">
+             {icon}
+           </div>
+           <div className="overflow-hidden">
+             <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">{label}</div>
+             <div className="text-[16px] font-bold text-[#101828] truncate w-full" title={value}>{value}</div>
+           </div>
+        </div>
+        
+        {/* Back */}
+        <div 
+          className="absolute w-full h-full p-3 bg-gradient-to-br from-[#F8F9FA] to-[#EFF0FE] rounded-xl border border-[#5B5FF6] shadow-lg flex flex-col justify-center" 
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+           <div className="text-[12px] font-medium text-[#374151] leading-tight line-clamp-2 mb-1" title={detail.reason}>{detail.reason}</div>
+           {detail.evidenceFile && (
+             <div 
+               className="text-[11px] font-bold text-[#5B5FF6] hover:underline hover:text-[#4346E4] flex items-center gap-1 w-max transition-colors"
+               onClick={(e) => { e.stopPropagation(); onFileClick(detail.evidenceFile, detail.evidenceLine); }}
+             >
+               <FileCode size={12} /> {detail.evidenceFile}
+             </div>
+           )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function Discovery({ 
   setActiveTab, 
   repoUrl, 
@@ -121,9 +185,12 @@ export default function Discovery({
     }
   };
 
-  const handleFileSelect = async (node, path) => {
+  const handleFileSelect = async (node, path, preserveHighlight = false) => {
     setSelectedFile({ node, path });
     setLoadingContent(true);
+    if (!preserveHighlight) {
+      setHighlightLine(null); // Reset highlight when manually selecting a file
+    }
     try {
       const repositoryId = repoUrl.split('/').pop().replace('.git', '');
       const content = await getRepositoryFileContent(repositoryId, path);
@@ -133,6 +200,14 @@ export default function Discovery({
     } finally {
       setLoadingContent(false);
     }
+  };
+
+  const [highlightLine, setHighlightLine] = useState(null);
+  
+  const handleEvidenceClick = (file, line) => {
+    setShowRepoExplorer(true);
+    setHighlightLine(line);
+    handleFileSelect({ name: file, extension: file.split('.').pop(), type: 'file' }, file, true);
   };
 
   const handleAnalyze = async () => {
@@ -174,6 +249,17 @@ export default function Discovery({
        fetchTreeData(repositoryId);
     }
   }, [repoUrl, result]);
+
+  useEffect(() => {
+    if (highlightLine && fileContent && !loadingContent) {
+      setTimeout(() => {
+        const element = document.querySelector('.highlighted-evidence-line');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300); // Increased timeout to ensure render is complete
+    }
+  }, [highlightLine, fileContent, loadingContent]);
 
   if (loading) {
     return (
@@ -399,97 +485,84 @@ export default function Discovery({
     <div className="flex flex-col gap-6 animate-fadeIn w-full pb-10">
       
       <div className="mb-8 mt-4">
-        <h2 className="text-[22px] font-bold text-[#101828] mb-5 tracking-tight">
-           Project Overview
-        </h2>
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-[22px] font-bold text-[#101828] tracking-tight m-0">
+             Project Overview
+          </h2>
+          <button 
+            onClick={() => setShowRepoExplorer(true)}
+            className="px-5 py-2.5 bg-white border border-[#E5E7EB] text-[#374151] font-bold rounded-xl shadow-sm hover:border-[#5B5FF6] hover:text-[#5B5FF6] hover:shadow-md transition-all flex items-center gap-2"
+          >
+            <Folder size={18} /> Open Repository Explorer
+          </button>
+        </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <div className="flex flex-col gap-5">
             {/* Row 1 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                   {(!result.language || result.language.toLowerCase().includes('java')) ? <JavaIcon size={24} /> : <FileCode size={24} className="text-[#3B82F6]" />}
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Language</div>
-                   <div className="text-[16px] font-bold text-[#101828]">{result.language || 'Java 17'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={(!result.language || result.language.toLowerCase().includes('java')) ? <JavaIcon size={24} /> : <FileCode size={24} className="text-[#3B82F6]" />}
+                label="Language"
+                value={result.techDetails?.language?.value || result.language || 'Java 17'}
+                detail={result.techDetails?.language}
+                onFileClick={handleEvidenceClick}
+              />
               
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                   {(!result.framework || result.framework.toLowerCase().includes('spring')) ? <SpringIcon size={24} /> : <div className="w-6 h-6 rounded-full border-[4px] border-[#10B981]"></div>}
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Framework</div>
-                   <div className="text-[16px] font-bold text-[#101828]">{result.framework || 'Spring Boot / Thymeleaf 3.2.3'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={(!result.framework || result.framework.toLowerCase().includes('spring')) ? <SpringIcon size={24} /> : <div className="w-6 h-6 rounded-full border-[4px] border-[#10B981]"></div>}
+                label="Framework"
+                value={result.techDetails?.framework_type?.value || result.framework || 'Spring Boot / Thymeleaf 3.2.3'}
+                detail={result.techDetails?.framework_type}
+                onFileClick={handleEvidenceClick}
+              />
 
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                   {(techStack.some(t => t.toLowerCase().includes('maven')) || !techStack.find(t => ['Gradle', 'npm', 'yarn'].includes(t))) ? <MavenIcon size={24} /> : <Layers size={24} className="text-[#F43F5E]" />}
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Build Tool</div>
-                   <div className="text-[16px] font-bold text-[#101828]">{techStack.find(t => ['Maven', 'Gradle', 'npm', 'yarn'].includes(t)) || 'Maven'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={(techStack.some(t => t.toLowerCase().includes('maven')) || !techStack.find(t => ['Gradle', 'npm', 'yarn'].includes(t))) ? <MavenIcon size={24} /> : <Layers size={24} className="text-[#F43F5E]" />}
+                label="Build Tool"
+                value={result.techDetails?.build_tool?.value || techStack.find(t => ['Maven', 'Gradle', 'npm', 'yarn'].includes(t)) || 'Maven'}
+                detail={result.techDetails?.build_tool}
+                onFileClick={handleEvidenceClick}
+              />
             </div>
             
             {/* Row 2 */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                   <Layout size={24} className="text-[#6366F1]" />
-                 </div>
-                 <div className="overflow-hidden">
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Application Name</div>
-                   <div className="text-[16px] font-bold text-[#101828] truncate w-full" title={repoName.replace(/_/g, ' ')}>{repoName.replace(/_/g, ' ') || 'Student Management System'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={<Layout size={24} className="text-[#6366F1]" />}
+                label="Application Name"
+                value={repoName.replace(/_/g, ' ') || 'Student Management System'}
+                detail={null} // Application Name doesn't have a techDetail from backend
+                onFileClick={handleEvidenceClick}
+              />
 
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
-                   <Box size={24} className="text-[#A855F7]" />
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Packaging</div>
-                   <div className="text-[16px] font-bold text-[#101828]">{result.packagingType || 'jar'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={<Box size={24} className="text-[#A855F7]" />}
+                label="Packaging"
+                value={result.techDetails?.packaging_type?.value || result.packagingType || 'jar'}
+                detail={result.techDetails?.packaging_type}
+                onFileClick={handleEvidenceClick}
+              />
 
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                   <Layers size={24} className="text-[#3B82F6]" />
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Module Type</div>
-                   <div className="text-[16px] font-bold text-[#101828]">{result.isMultiModule ? 'Multi Module' : 'Single Module'}</div>
-                 </div>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-[#5B5FF6] transition-colors">
-                 <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                   <ShieldCheck size={24} className="text-[#10B981]" />
-                 </div>
-                 <div>
-                   <div className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mb-0.5">Risk Level</div>
-                   <div className="text-[16px] font-bold text-emerald-600">{result.riskLevel || 'Low'}</div>
-                 </div>
-              </div>
+              <TechCard 
+                icon={<Layers size={24} className="text-[#3B82F6]" />}
+                label="Module Type"
+                value={(result.techDetails?.is_multi_module?.value === 'True' || result.techDetails?.is_multi_module?.value === true || result.isMultiModule) ? 'Multi Module' : 'Single Module'}
+                detail={result.techDetails?.is_multi_module}
+                onFileClick={handleEvidenceClick}
+              />
+              
+              <TechCard 
+                icon={<ShieldCheck size={24} className="text-[#10B981]" />}
+                label="Risk Level"
+                value={result.techDetails?.riskLevel?.value || result.riskLevel || 'Low'}
+                detail={result.techDetails?.riskLevel}
+                onFileClick={handleEvidenceClick}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-start mb-8 pl-1">
-        <button 
-          onClick={() => setShowRepoExplorer(true)}
-          className="px-6 py-3 bg-white border border-[#E5E7EB] text-[#374151] font-bold rounded-xl shadow-sm hover:border-[#5B5FF6] hover:text-[#5B5FF6] hover:shadow-md transition-all flex items-center gap-2"
-        >
-          <Folder size={18} /> Open Repository Explorer
-        </button>
-      </div>
 
       {/* Grid Container for Side-by-Side Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 items-stretch">
@@ -544,7 +617,30 @@ export default function Discovery({
                  </div>
                </div>
                
-               <div className="pt-4 flex justify-center">
+               {/* ADDITIONAL CONTEXT */}
+               {result.fullBrdReport?.modernizationContext && (
+                 <div className="mb-6 flex-1">
+                   <h4 className="text-[12px] uppercase tracking-wider font-bold text-[#667085] flex items-center gap-2 mb-3">
+                     <FileText size={16} className="text-[#667085]" /> MODERNIZATION CONTEXT
+                   </h4>
+                   <p className="text-[#344054] text-[14px] leading-relaxed font-medium">
+                     {result.fullBrdReport.modernizationContext}
+                   </p>
+                 </div>
+               )}
+               
+               {result.fullBrdReport?.processingModes && (
+                 <div className="mb-6 flex-1">
+                   <h4 className="text-[12px] uppercase tracking-wider font-bold text-[#667085] flex items-center gap-2 mb-3">
+                     <Database size={16} className="text-[#667085]" /> PROCESSING MODES
+                   </h4>
+                   <p className="text-[#344054] text-[14px] leading-relaxed font-medium">
+                     {result.fullBrdReport.processingModes}
+                   </p>
+                 </div>
+               )}
+               
+               <div className="pt-2 flex justify-center">
                   <button onClick={() => handleDownload('brd')} className="px-6 py-2.5 bg-white border border-slate-200 text-[#5B5FF6] text-[14px] font-bold rounded-full hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm hover:shadow">
                     View Full Business Report <ChevronRight size={16} />
                   </button>
@@ -694,6 +790,17 @@ export default function Discovery({
                         style={vscDarkPlus}
                         customStyle={{ margin: 0, background: 'transparent', fontSize: '13px', padding: '16px' }}
                         showLineNumbers={true}
+                        wrapLines={true}
+                        lineProps={lineNumber => {
+                          let style = { display: 'block' };
+                          let className = '';
+                          if (highlightLine && lineNumber === parseInt(highlightLine)) {
+                            style.backgroundColor = 'rgba(91, 95, 246, 0.3)';
+                            style.borderLeft = '3px solid #5B5FF6';
+                            className = 'highlighted-evidence-line';
+                          }
+                          return { style, className };
+                        }}
                       >
                         {fileContent || '// Empty file'}
                       </SyntaxHighlighter>

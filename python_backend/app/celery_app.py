@@ -1,3 +1,14 @@
+# Monkey patch redis.ConnectionPool to force protocol=2 (RESP2) for compatibility with older Redis servers
+try:
+    import redis
+    original_pool_init = redis.ConnectionPool.__init__
+    def patched_pool_init(self, *args, **connection_kwargs):
+        connection_kwargs['protocol'] = 2
+        original_pool_init(self, *args, **connection_kwargs)
+    redis.ConnectionPool.__init__ = patched_pool_init
+except Exception:
+    pass
+
 from celery import Celery
 import os
 

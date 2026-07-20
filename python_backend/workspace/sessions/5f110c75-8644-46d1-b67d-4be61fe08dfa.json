@@ -1,0 +1,281 @@
+{
+  "sessionId": "5f110c75-8644-46d1-b67d-4be61fe08dfa",
+  "repoUrl": "https://github.com/meenalozhnee04/task-manager.git",
+  "localPath": null,
+  "analysisResult": {
+    "repoUrl": "https://github.com/meenalozhnee04/task-manager.git",
+    "projectType": "Java",
+    "isJava": true,
+    "detectedJavaVersion": null,
+    "buildTool": "Maven",
+    "frameworkType": "Spring Boot / Thymeleaf",
+    "database": "H2 (Embedded)",
+    "packagingType": null,
+    "isMultiModule": false,
+    "hasFrontend": false,
+    "frontendFramework": null,
+    "endpointCount": 0,
+    "riskLevel": "Unknown",
+    "techDetails": {
+      "build_tool": {
+        "value": "Maven",
+        "reason": "Found pom.xml in project root",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 1
+      },
+      "framework_type": {
+        "value": "Spring Boot / Thymeleaf",
+        "reason": "Spring Boot framework with Thymeleaf templating engine detected",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 26
+      },
+      "database": {
+        "value": "H2 (Embedded)",
+        "reason": "H2 embedded in-memory database identified",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 34
+      },
+      "packaging_type": {
+        "value": "jar",
+        "reason": "Standard Java Archive (JAR) deployment packaging identified",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 1
+      },
+      "is_multi_module": {
+        "value": "False",
+        "reason": "Standard monolithic project structure without sub-modules",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 1
+      },
+      "has_frontend": {
+        "value": "True",
+        "reason": "Found static web directory: src/main/resources/templates",
+        "evidenceFile": "src/main/resources/templates",
+        "evidenceLine": 1
+      },
+      "frontend_framework": {
+        "value": "Thymeleaf",
+        "reason": "Framework is Thymeleaf and found src/main/resources/templates",
+        "evidenceFile": "src/main/resources/templates",
+        "evidenceLine": 1
+      },
+      "language": {
+        "value": "Java 21",
+        "reason": "Found java.version tag in pom.xml",
+        "evidenceFile": "pom.xml",
+        "evidenceLine": 17
+      },
+      "riskLevel": {
+        "value": "Low (5%)",
+        "reason": "Modern technology stack with no major risks identified.",
+        "evidenceFile": null,
+        "evidenceLine": null
+      }
+    },
+    "deprecatedApis": [],
+    "dependencies": [],
+    "frameworkVersions": {},
+    "fullBrdReport": {
+      "orgInitial": "",
+      "orgName": "",
+      "appName": "task-manager",
+      "docVersion": "",
+      "docStatus": "",
+      "docDate": "",
+      "repoUrl": "",
+      "primaryLang": "",
+      "platform": "",
+      "environment": "",
+      "techStackSummary": [
+        "Language: Java",
+        "Framework: Spring Boot / Thymeleaf",
+        "Build Tool: Maven",
+        "Database: H2 (Embedded)"
+      ],
+      "docPurposeDesc": "",
+      "appPurposeDesc": "This application is a Spring Boot / Thymeleaf project built using Maven.",
+      "modernizationContext": "Project contains 0 deprecated API usages and uses Java 21. This baseline establishes boundaries for automated functional testing.",
+      "processingModes": "",
+      "totalPrograms": 0,
+      "totalLoc": 0,
+      "totalOrphanFiles": 0,
+      "updateTracking": [],
+      "staticCodeAnalysis": {
+        "programTypes": [],
+        "totalPhyFiles": 0,
+        "totalUsedFiles": 0,
+        "totalOrphFiles": 0,
+        "totalPhyLoc": 0,
+        "totalUsedLoc": 0,
+        "totalOrphLoc": 0
+      },
+      "detailedPurpose": "",
+      "objectives": [],
+      "inScope": [],
+      "outOfScope": [],
+      "capabilities": [
+        {
+          "name": "Core Business Logic",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        },
+        {
+          "name": "Data Persistence",
+          "overview": "",
+          "features": [],
+          "value": "",
+          "processes": []
+        }
+      ],
+      "architectureIntro": "",
+      "actors": [],
+      "uiComponents": [],
+      "bizComponents": [
+        "Application Services",
+        "Data Access Layer",
+        "API Controllers"
+      ],
+      "dataAccessComponents": [],
+      "dataStores": [],
+      "externalSystems": [],
+      "archPatterns": [],
+      "businessFlowOverview": "",
+      "fullModuleBreakdown": "",
+      "languages": [],
+      "onlineEnvironments": [],
+      "databases": [],
+      "jobControlDesc": "",
+      "jobSchedulingDesc": "",
+      "middlewares": [],
+      "securityFrameworkDesc": "",
+      "devTools": [],
+      "osDesc": "",
+      "dataEntitiesIntro": "",
+      "primaryDataStores": [
+        {
+          "name": "H2 (Embedded)",
+          "description": "Main application data store"
+        }
+      ],
+      "dataEntryPoints": [],
+      "dataProcessingWorkflows": [],
+      "dataExitPoints": [],
+      "criticalDataDependencies": [],
+      "dbSchemaIntro": "",
+      "keyRelationships": [],
+      "onlineProcessIntro": "",
+      "onlineTransactions": [],
+      "batchProcessIntro": "",
+      "batchCycles": [],
+      "jobStreamDependencyDesc": "",
+      "keyTransactions": [],
+      "keyScreenFlows": [],
+      "useCases": [],
+      "classModelIntro": "",
+      "classes": [],
+      "activityFlows": [],
+      "sequenceDiagrams": [],
+      "inboundIntegrations": [],
+      "outboundIntegrations": [],
+      "integrationTechs": [],
+      "apiGeneralNote": "",
+      "apiGroups": [
+        {
+          "name": "REST Endpoints",
+          "endpoints": []
+        }
+      ],
+      "authNfrs": [],
+      "authzNfrs": [],
+      "dataSecurityNfrs": [],
+      "availabilityNfrs": [],
+      "performanceNfrs": [],
+      "scalabilityNfrs": [],
+      "complianceNfrs": [],
+      "technicalRisks": [],
+      "operationalChallenges": [],
+      "securityConcerns": [],
+      "maintenanceIssues": [],
+      "fileGroups": [],
+      "orphanFilesByCategory": [],
+      "securityChecklist": [],
+      "piiAnalysis": [],
+      "acceptanceCriteria": [],
+      "knownLimitations": [],
+      "supportChannels": [],
+      "escalationMatrix": [],
+      "roles": [],
+      "glossary": [],
+      "sourceFiles": [],
+      "processingSummaryList": [],
+      "revisionHistory": []
+    },
+    "errorMessage": null,
+    "usedProvider": "database",
+    "sessionId": "5f110c75-8644-46d1-b67d-4be61fe08dfa",
+    "testMetrics": {
+      "total": 0,
+      "passed": "Not Available",
+      "failed": "Not Available",
+      "type": "Not Detected",
+      "aiStrategy": {
+        "testingScope": "The AI analyzed the existing test coverage and found no existing tests, indicating a need for comprehensive testing of the Spring Boot / Thymeleaf application",
+        "coverageGaps": [
+          "No unit tests",
+          "No integration tests",
+          "No end-to-end tests",
+          "No UI tests"
+        ],
+        "recommendedStrategy": {
+          "recommendedTool": "Playwright",
+          "testingType": "UI / E2E",
+          "priority": "High",
+          "target": "Authentication and core application features",
+          "reason": "Given the lack of existing tests and the application's technology stack, a UI/E2E testing approach with Playwright is recommended to ensure the application's critical features are thoroughly tested"
+        },
+        "newTestScope": [
+          {
+            "name": "Verify user login",
+            "description": "Ensure users can log in successfully",
+            "type": "UI / E2E",
+            "tool": "Playwright",
+            "priority": "High"
+          },
+          {
+            "name": "Verify user registration",
+            "description": "Ensure new users can register successfully",
+            "type": "UI / E2E",
+            "tool": "Playwright",
+            "priority": "Medium"
+          },
+          {
+            "name": "Test core application features",
+            "description": "Ensure core features of the application are working as expected",
+            "type": "UI / E2E",
+            "tool": "Playwright",
+            "priority": "High"
+          }
+        ]
+      }
+    },
+    "existingTestDetails": {
+      "frameworks": [],
+      "languages": [],
+      "testTypes": [],
+      "testCases": []
+    }
+  },
+  "workflowState": {
+    "analysisCompleted": true,
+    "runnerCompleted": false
+  },
+  "migrationResult": null,
+  "stats": {
+    "reposAnalyzed": 0,
+    "migrationsRun": 0,
+    "filesConverted": 0
+  },
+  "migrations": []
+}

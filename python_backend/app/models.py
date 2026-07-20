@@ -52,6 +52,12 @@ class TaskResponse(BaseModel):
 
 from app.brd_models import FullBrdReport
 
+class TechDetail(BaseModel):
+    value: str
+    reason: str
+    evidenceFile: Optional[str] = None
+    evidenceLine: Optional[int] = None
+
 class AnalysisResponse(BaseModel):
     repoUrl: str
     projectType: Optional[str] = None
@@ -66,6 +72,7 @@ class AnalysisResponse(BaseModel):
     frontendFramework: Optional[str] = None   # "React", "Angular", "Vue", "Thymeleaf", "JSP"
     endpointCount: int = 0
     riskLevel: Optional[str] = None           # "Low", "Medium", "High"
+    techDetails: Optional[Dict[str, TechDetail]] = None
     deprecatedApis: List[str] = []
     dependencies: List[str] = []
     frameworkVersions: Dict[str, str] = {}
@@ -75,7 +82,6 @@ class AnalysisResponse(BaseModel):
     sessionId: Optional[str] = None
     testMetrics: Optional[Dict[str, Any]] = None
     existingTestDetails: Optional[Dict[str, Any]] = None
-
 class MigrationResponse(BaseModel):
     success: bool
     targetVersion: str

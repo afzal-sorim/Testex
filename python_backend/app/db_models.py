@@ -34,6 +34,7 @@ class Analysis(Base):
     # Store raw json for fallback / complex structures if needed, though we will map everything to relations
     full_brd_report = Column(JSON, nullable=True)
     existing_test_details = Column(JSON, nullable=True)
+    tech_details = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
 

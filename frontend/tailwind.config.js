@@ -51,6 +51,7 @@ export default {
         'rocketFly': 'rocketFly 3s ease-in-out infinite',
         'rocketFlame': 'rocketFlame 0.3s ease-in-out infinite alternate',
         'rocketBounce': 'rocketBounce 1.5s ease-in-out infinite',
+        'bounce-5s': 'bounce5s 5s infinite',
       },
       keyframes: {
         fadeIn: {
@@ -73,6 +74,11 @@ export default {
         rocketBounce: {
           '0%, 100%': { transform: 'translateY(-2px)' },
           '50%': { transform: 'translateY(2px)' },
+        },
+        bounce5s: {
+          '0%, 18%, 100%': { transform: 'translateY(0)' },
+          '6%': { transform: 'translateY(-25px)' },
+          '12%': { transform: 'translateY(0)' },
         },
       },
     },

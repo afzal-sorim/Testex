@@ -68,7 +68,10 @@ class ProjectExecutionService:
                     print(f"[Execution Engine] ⚡ JAR exists ({existing_jars[0].name}) — skipping mvn clean package.")
                 else:
                     print("[Execution Engine] Running mvn clean package -DskipTests...")
-                    result = subprocess.run("mvn clean package -DskipTests", cwd=repo_path, shell=True, capture_output=True, text=True, timeout=300)
+                    result = subprocess.run(
+                        'mvn "-Dcheckstyle.skip=true" "-Dspring-javaformat.skip=true" clean package -DskipTests',
+                        cwd=repo_path, shell=True, capture_output=True, text=True, timeout=300
+                    )
                     if result.returncode != 0:
                         return {"success": False, "error": f"Maven build failed: {result.stderr}"}
                 return {"success": True, "type": "java-maven"}

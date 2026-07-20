@@ -878,18 +878,31 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
 
     # Run tests in the background (non-blocking)
     async def _run():
-        from app.services.project_runner_service import project_runner_service
-        status = project_runner_service.get_status(repo_name).get("status")
-        if status not in ["RUNNING", "RUNNING_API"]:
-            try:
-                await project_runner_service.start_project(repo_name)
-                # Wait for Spring Boot / App to spin up fully
-                import asyncio
-                await asyncio.sleep(10)
-            except Exception as e:
-                print(f"Failed to start project runner automatically: {e}")
-                
-        await playwright_service.run_playwright_tests(repo_name, project_dir)
+        try:
+            from app.services.project_runner_service import project_runner_service
+            status = project_runner_service.get_status(repo_name).get("status")
+            if status not in ["RUNNING", "RUNNING_API"]:
+                try:
+                    await project_runner_service.start_project(repo_name)
+                    # Poll until status is RUNNING, RUNNING_API or FAILED (max 5 minutes)
+                    for _ in range(60):
+                        await asyncio.sleep(5)
+                        current_status = project_runner_service.get_status(repo_name).get("status")
+                        if current_status in ["RUNNING", "RUNNING_API"]:
+                            break
+                        if current_status == "FAILED":
+                            print(f"[Playwright Task] Project startup failed. Skipping tests.")
+                            playwright_service._results[repo_name] = playwright_service._error("Application failed to build or start. Check project runner logs.")
+                            return
+                except Exception as e:
+                    print(f"[Playwright Task] Failed to start project runner automatically: {e}")
+                    
+            await playwright_service.run_playwright_tests(repo_name, project_dir)
+        except Exception as e:
+            print(f"[Playwright Task] Unhandled error in background task: {e}")
+            import traceback
+            traceback.print_exc()
+            playwright_service._results[repo_name] = playwright_service._error(f"Test execution crashed: {e}")
 
     background_tasks.add_task(_run)
     return JSONResponse(content={**detection, "status": "RUNNING"})
@@ -981,8 +994,16 @@ async def run_migration_selenium(id: str, background_tasks: BackgroundTasks):
         if runner_status not in ["RUNNING", "RUNNING_API"]:
             try:
                 await project_runner_service.start_project(id)
-                import asyncio
-                await asyncio.sleep(10)  # Wait for the app to fully spin up
+                # Poll until status is RUNNING, RUNNING_API or FAILED (max 5 minutes)
+                for _ in range(60):
+                    await asyncio.sleep(5)
+                    current_status = project_runner_service.get_status(id).get("status")
+                    if current_status in ["RUNNING", "RUNNING_API"]:
+                        break
+                    if current_status == "FAILED":
+                        print(f"[Selenium Task] Project startup failed. Skipping tests.")
+                        selenium_service._results[id] = {**detection, "status": "FAILED"}
+                        return
             except Exception as e:
                 print(f"[Selenium] Failed to auto-start project runner: {e}")
         await selenium_service.run_selenium_tests(id, project_dir)

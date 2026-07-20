@@ -22,6 +22,8 @@ export default function ProjectRunner({
   const [testData, setTestData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedTool, setSelectedTool] = useState(workflowState?.selectedTool || null);
+  const [hasRunThisSession, setHasRunThisSession] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   
   // Dynamic UI States
   const [currentLogs, setCurrentLogs] = useState([]);
@@ -61,9 +63,26 @@ export default function ProjectRunner({
     return () => clearInterval(interval);
   }, [repoName, selectedTool]);
 
-  // Live log streaming while running
+  // Use a ref to track progress inside timer without causing re-renders of the effect
+  const progressRef = useRef(progressPercent);
+  useEffect(() => { progressRef.current = progressPercent; }, [progressPercent]);
+
+  // Timer effect: only starts/stops when status or isPaused changes (NOT on every progress tick)
   useEffect(() => {
     let timer;
+    if (status === 'RUNNING') {
+      if (progressRef.current === 0) setProgressPercent(5);
+      timer = setInterval(() => {
+        if (!isPaused) {
+          setProgressPercent(prev => Math.min(prev + 1, 95));
+        }
+      }, 2000);
+    }
+    return () => clearInterval(timer);
+  }, [status, isPaused]);
+
+  // Log rendering effect: updates logs when status, testData, or progress changes
+  useEffect(() => {
     if (status === 'RUNNING') {
       const baseCases = analysisResult?.testCases || [
         { id: 'TC_001', title: 'Navigation flows' },
@@ -87,13 +106,8 @@ export default function ProjectRunner({
           status: isLast ? 'Running' : 'Passed'
         };
       });
-
       setCurrentLogs(liveLogs);
-      if (progressPercent === 0) setProgressPercent(5);
-      timer = setInterval(() => {
-        setProgressPercent(prev => Math.min(prev + 1, 95));
-      }, 2000);
-      
+
     } else if (status === 'SUCCESS' || status === 'FAILED' || status === 'PASSED' || status === 'COMPLETED') {
       if (testData && testData.modules && testData.modules.length > 0) {
         const actualLogs = testData.modules.map((m, idx) => {
@@ -113,18 +127,16 @@ export default function ProjectRunner({
         ]);
       }
       setProgressPercent(100);
-    } else if (status === 'ERROR' || status === 'NOT_AVAILABLE') {
+    } else if (hasRunThisSession && (status === 'ERROR' || status === 'NOT_AVAILABLE')) {
+      // Show error but preserve the progress reached — don't reset to 0
       setCurrentLogs([
-        { time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), icon: <XCircle size={14} className="text-rose-500" />, text: 'Execution failed due to an error or missing configuration.', status: 'Failed' }
+        { time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), icon: <XCircle size={14} className="text-rose-500" />, text: errorMsg || 'Execution failed due to an error or missing configuration.', status: 'Failed' }
       ]);
-      setProgressPercent(0);
-    } else {
+    } else if (!hasRunThisSession) {
       setCurrentLogs([]);
       setProgressPercent(0);
     }
-    
-    return () => clearInterval(timer);
-  }, [status, testData, progressPercent, analysisResult]);
+  }, [status, testData, progressPercent, analysisResult, hasRunThisSession, errorMsg]);
 
   const handleSelectTool = (tool) => {
     setSelectedTool(tool);
@@ -142,6 +154,10 @@ export default function ProjectRunner({
     if (!repoName) return;
     setLoading(true);
     setErrorMsg('');
+    setHasRunThisSession(true);
+    setIsPaused(false);
+    setProgressPercent(0);
+    setCurrentLogs([]);
     try {
       await runTests(repoName);
       setStatus('RUNNING');
@@ -315,13 +331,31 @@ export default function ProjectRunner({
               >
                 Back to Tools
               </button>
-              <button 
-                onClick={handleStart}
-                disabled={isRunning}
-                className="flex items-center gap-2 px-6 py-2 bg-[#5B5FF6] text-white font-bold rounded-xl shadow-sm hover:bg-[#4f53dc] disabled:opacity-50 transition-colors"
-              >
-                <Play size={18} /> Run Automated Tests
-              </button>
+              {!isRunning ? (
+                <button 
+                  onClick={handleStart}
+                  className="flex items-center gap-2 px-6 py-2 bg-[#5B5FF6] text-white font-bold rounded-xl shadow-sm hover:bg-[#4f53dc] transition-colors"
+                >
+                  {isCompleted ? <><RefreshCcw size={18} /> Restart</> : <><Play size={18} /> Run Automated Tests</>}
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsPaused(true)}
+                    disabled={isPaused}
+                    className={`flex items-center gap-2 px-6 py-2 font-bold rounded-xl shadow-sm transition-colors ${isPaused ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                  >
+                    <StopCircle size={18} /> Stop
+                  </button>
+                  <button 
+                    onClick={() => setIsPaused(false)}
+                    disabled={!isPaused}
+                    className={`flex items-center gap-2 px-6 py-2 font-bold rounded-xl shadow-sm transition-colors ${!isPaused ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+                  >
+                    <Play size={18} /> Resume
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
@@ -404,7 +438,11 @@ export default function ProjectRunner({
                   <h3 className="text-md font-bold text-[#101828] mb-6">Live Execution Logs</h3>
                   <div className="flex flex-col max-h-[400px] min-h-[150px] overflow-y-auto custom-scrollbar pr-2">
 
-                    {currentLogs.length > 0 ? (
+                    {(!hasRunThisSession || (status === 'IDLE' && currentLogs.length === 0)) ? (
+                      <div className="flex items-center justify-center h-full min-h-[150px] text-[#667085] font-bold text-sm">
+                        No active logs
+                      </div>
+                    ) : currentLogs.length > 0 ? (
                       currentLogs.map((log, idx) => {
                         const parts = log.text.split(':');
                         const isTestCase = parts.length > 1 && (parts[0].trim().startsWith('TC_') || parts[0].trim().startsWith('TEST_'));
@@ -533,22 +571,7 @@ export default function ProjectRunner({
               </button>
             </div>
             
-            {isRunning ? (
-              <button 
-                onClick={handleStop}
-                className="px-6 py-2.5 bg-rose-600 text-white font-bold rounded-xl shadow-sm hover:bg-rose-700 transition-colors flex items-center gap-2 text-sm"
-              >
-                <StopCircle size={16} /> Stop Execution
-              </button>
-            ) : (
-              <button 
-                onClick={handleStart}
-                disabled={loading}
-                className="px-6 py-2.5 bg-[#5B5FF6] text-white font-bold rounded-xl shadow-sm hover:bg-[#4f53dc] transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-              >
-                <Play size={16} /> Start Execution
-              </button>
-            )}
+            {/* Bottom start execution removed as per request */}
           </div>
           
         </>
@@ -564,7 +587,8 @@ export default function ProjectRunner({
         </button>
         <button 
           onClick={() => setActiveTab('results')}
-          className="px-8 py-3 bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] text-white font-bold rounded-xl shadow-[0_4px_14px_rgba(91,95,246,0.4)] hover:shadow-[0_6px_20px_rgba(91,95,246,0.6)] hover:-translate-y-0.5 transition-all flex items-center gap-2"
+          disabled={!isCompleted}
+          className={`px-8 py-3 bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] text-white font-bold rounded-xl shadow-[0_4px_14px_rgba(91,95,246,0.4)] flex items-center gap-2 ${!isCompleted ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:shadow-[0_6px_20px_rgba(91,95,246,0.6)] hover:-translate-y-0.5 transition-all'}`}
         >
           Continue <ArrowRight size={18} />
         </button>

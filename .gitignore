@@ -7,3 +7,9 @@ python_backend/workspace/
 python_backend/.venv/
 .env
 .DS_Store
+*.db
+python_backend/*.db
+python_backend/settings.json
+service_logs/
+tunnel_url.txt
+redis/
