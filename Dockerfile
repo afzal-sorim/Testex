@@ -39,8 +39,8 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Strictly install ONLY Chromium for Playwright to save ~500MB+
-RUN npx playwright install chromium --with-deps
+# Chromium is installed in the dedicated playwright container, so we skip it here to save space
+# RUN npx playwright install chromium --with-deps
 
 # Copy the rest of the backend source code into /app
 COPY python_backend/ .
