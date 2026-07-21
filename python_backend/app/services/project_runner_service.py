@@ -905,7 +905,7 @@ class ProjectRunnerService:
                         run_cmd = (
                             f'"{mvn_cmd}" exec:java '
                             f'-Dexec.mainClass="{main_class}" '
-                            f'-Dexec.args="--server.port={port} --spring.profiles.active=migration" '
+                            f'-Dexec.args="--server.port={port} --server.address=0.0.0.0 --spring.profiles.active=migration" '
                             f'-DskipTests=true'
                         )
                     else:
@@ -915,7 +915,7 @@ class ProjectRunnerService:
                         return
                 else:
                     self.add_log(repo_name, f"\n>>> [Phase 2/2] Launching application JAR: {jar_path} ...\n")
-                    run_cmd = f'java -jar "{jar_path}" --server.port={port} --spring.profiles.active=migration'
+                    run_cmd = f'java -jar "{jar_path}" --server.port={port} --server.address=0.0.0.0 --spring.profiles.active=migration'
  
         elif project_type == "Spring Boot / Gradle":
             gradle_cmd = "gradlew.bat" if is_windows else "./gradlew"
@@ -965,7 +965,7 @@ class ProjectRunnerService:
                 return
                 
             self.add_log(repo_name, f"\n>>> [Phase 2/2] Launching application JAR: {jar_path} ...\n")
-            run_cmd = f'java -jar "{jar_path}" --server.port={port} --spring.profiles.active=migration'
+            run_cmd = f'java -jar "{jar_path}" --server.port={port} --server.address=0.0.0.0 --spring.profiles.active=migration'
 
         elif project_type == "React / Vite":
             # Vite handles port through double dash or port argument

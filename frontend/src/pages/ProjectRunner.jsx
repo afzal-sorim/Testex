@@ -146,11 +146,11 @@ export default function ProjectRunner({
   // Dynamic UI States
   const [currentLogs, setCurrentLogs] = useState([]);
   const [progressPercent, setProgressPercent] = useState(0);
-  const logsEndRef = useRef(null);
+  const logContainerRef = useRef(null);
 
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [currentLogs]);
 
@@ -595,7 +595,7 @@ export default function ProjectRunner({
               <div className="col-span-2">
                 <div className={`bg-white rounded-3xl p-6 transition-all duration-500 ${isRunning ? 'border-2 border-[#5B5FF6] shadow-[0_0_20px_rgba(91,95,246,0.15)]' : 'border border-[#EAECF0] shadow-[0_2px_10px_rgba(0,0,0,0.02)]'}`}>
                   <h3 className="text-md font-bold text-[#101828] mb-6">Live Execution Logs</h3>
-                  <div className="flex flex-col max-h-[400px] min-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                  <div ref={logContainerRef} className="flex flex-col max-h-[400px] min-h-[150px] overflow-y-auto custom-scrollbar pr-2">
 
                     {currentLogs.length > 0 ? (
                       currentLogs.map((log, idx) => {
@@ -642,7 +642,6 @@ export default function ProjectRunner({
                         <p className="text-xs mt-1">Start the execution to view live terminal output.</p>
                       </div>
                     )}
-                    <div ref={logsEndRef} />
                   </div>
                 </div>
               </div>
