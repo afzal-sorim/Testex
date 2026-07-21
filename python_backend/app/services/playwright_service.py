@@ -544,7 +544,12 @@ test.describe('Navigation & Core Routing', () => {
             if json_report_path.exists():
                 return self._parse_json_results(json_report_path, report_dir, repo_name)
                 
-            return self._error(f"Remote execution completed successfully, but did not return a valid test results JSON.\nExit code: {data.get('exitCode')}\n\nStdout:\n{data.get('stdout', '')[-1500:]}")
+            return self._error(
+                f"Remote execution completed successfully, but did not return a valid test results JSON.\n"
+                f"Exit code: {data.get('exitCode')}\n\n"
+                f"Stdout:\n{data.get('stdout', '')[-1000:]}\n\n"
+                f"Stderr:\n{data.get('stderr', '')[-1000:]}"
+            )
             
         except Exception as exc:
             return self._error(f"Failed to communicate with external Playwright validation service at {url}: {exc}")
