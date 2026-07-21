@@ -148,7 +148,7 @@ async def get_status():
     }
 
 @router.post("/validate-repo", response_model=ValidateRepoResponse)
-async def validate_repo(request: ValidateRepoRequest):
+def validate_repo(request: ValidateRepoRequest):
     return analysis_service.validate_repository(request.repoUrl, request.patToken)
 
 class ValidateLocalRequest(BaseModel):
@@ -198,7 +198,7 @@ async def validate_local(request: ValidateLocalRequest):
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
-async def analyze(request: AnalyzeRequest):
+def analyze(request: AnalyzeRequest):
     if request.provider:
         app_config.ai_provider = request.provider
         
