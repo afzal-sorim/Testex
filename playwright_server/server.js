@@ -29,8 +29,12 @@ app.post('/run', async (req, res) => {
   let tempDir = null;
 
   try {
-    // 1. Create a unique temporary directory
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'playwright-run-'));
+    // 1. Create a unique temporary directory inside the app workspace
+    const baseTempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(baseTempDir)) {
+      fs.mkdirSync(baseTempDir, { recursive: true });
+    }
+    tempDir = fs.mkdtempSync(path.join(baseTempDir, 'playwright-run-'));
     
     // Create subdirectories
     const testsDir = path.join(tempDir, 'tests');
@@ -66,7 +70,11 @@ export default defineConfig({
     }
 
     // 4. Execute the Playwright tests
-    const env = { ...process.env, PLAYWRIGHT_BASE_URL: baseURL };
+    const env = { 
+      ...process.env, 
+      PLAYWRIGHT_BASE_URL: baseURL,
+      NODE_PATH: path.join(__dirname, 'node_modules')
+    };
     
     console.log(`[Playwright Server] Executing tests for target: ${baseURL} inside: ${tempDir}`);
     
