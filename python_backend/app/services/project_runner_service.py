@@ -671,11 +671,72 @@ class ProjectRunnerService:
             await asyncio.sleep(1)
         return False
 
+    def cleanup_orphaned_processes(self, repo_name: str, port: int = None):
+        """Clean up any leftover/orphaned Java or Node processes running this repo or using this port on Windows/Linux."""
+        import os
+        import subprocess
+        
+        if os.name == 'nt':
+            # 1. Kill by repo name in command line (Windows)
+            try:
+                # Java processes
+                cmd_java = 'wmic process where "name=\'java.exe\'" get CommandLine,ProcessId'
+                output = subprocess.check_output(cmd_java, shell=True, text=True, errors='replace')
+                for line in output.strip().split('\n'):
+                    if repo_name in line:
+                        parts = line.strip().split()
+                        if parts:
+                            pid = parts[-1]
+                            print(f"[Cleanup] Killing orphaned java process PID {pid} for {repo_name}")
+                            subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+            try:
+                # Node processes (Vite, webpack, etc.)
+                cmd_node = 'wmic process where "name=\'node.exe\'" get CommandLine,ProcessId'
+                output = subprocess.check_output(cmd_node, shell=True, text=True, errors='replace')
+                for line in output.strip().split('\n'):
+                    if repo_name in line:
+                        parts = line.strip().split()
+                        if parts:
+                            pid = parts[-1]
+                            print(f"[Cleanup] Killing orphaned node process PID {pid} for {repo_name}")
+                            subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+            # 2. Kill process on port if specified
+            if port:
+                try:
+                    output = subprocess.check_output(f"netstat -ano | findstr LISTENING | findstr :{port}", shell=True, text=True, errors='replace')
+                    for line in output.strip().split('\n'):
+                        parts = [p for p in line.split() if p]
+                        if len(parts) >= 5:
+                            pid = parts[-1]
+                            print(f"[Cleanup] Killing process PID {pid} listening on port {port}")
+                            subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+        else:
+            # Unix fallback
+            if port:
+                try:
+                    subprocess.run(f"fuser -k -n tcp {port}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+
     async def start_project(self, repo_name: str):
         """Starts the project lifecycle asynchronously in the background."""
         # 1. Stop any currently running instance
         if repo_name in self.runs and self.runs[repo_name]["status"] in ["STARTING", "RUNNING"]:
             await self.stop_project(repo_name)
+            
+        # Clean up any leftover processes before starting
+        old_port = self.runs[repo_name].get("port") if repo_name in self.runs else None
+        self.cleanup_orphaned_processes(repo_name, port=old_port)
+        # Also ensure default start port is free
+        self.cleanup_orphaned_processes(repo_name, port=8081)
 
         run_dir = self.get_run_dir(repo_name)
         if not run_dir.exists():
@@ -837,15 +898,25 @@ class ProjectRunnerService:
             is_war = "<packaging>war</packaging>" in pom_content.lower()
             if is_war and not main_class:
                 self.add_log(repo_name, "[Run Strategy] Detected WAR packaging without main class. Using jetty:run.")
-                run_cmd = f'"{mvn_cmd}" jetty:run -Djetty.http.port={port} -Dcheckstyle.skip=true'
+                run_cmd = f'"{mvn_cmd}" "-Dcheckstyle.skip=true" "-Dspring-javaformat.skip=true" jetty:run -Djetty.http.port={port}'
             else:
                 # Compile first using Maven, then launch via java -jar (saves dual JVM memory overhead)
                 self.add_log(repo_name, ">>> [Phase 1/2] Compiling and packaging Java application (Maven)...")
-                build_cmd = f'"{mvn_cmd}" clean package -DskipTests=true'
-                self.add_log(repo_name, f"Executing: {build_cmd}\n")
+                import shutil
+                clean_mvn = mvn_cmd.strip('"')
+                executable = shutil.which(clean_mvn, path=env.get("PATH")) or clean_mvn
+                build_args = [
+                    executable,
+                    "-Dcheckstyle.skip=true",
+                    "-Dspring-javaformat.skip=true",
+                    "clean",
+                    "package",
+                    "-DskipTests=true"
+                ]
+                self.add_log(repo_name, f"Executing: {' '.join(build_args)}\n")
                 
-                build_process = await asyncio.create_subprocess_shell(
-                    build_cmd,
+                build_process = await asyncio.create_subprocess_exec(
+                    *build_args,
                     cwd=str(run_dir),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.STDOUT,

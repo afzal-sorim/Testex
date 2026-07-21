@@ -11,8 +11,10 @@ Write-Host "Setting up Python environment..."
 Set-Location "python_backend"
 if (-not (Test-Path "venv")) {
     python -m venv venv
+    & .\venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
 }
-& .\venv\Scripts\Activate.ps1
 Set-Location ..
 
 Write-Host "Starting FastAPI Backend..."

@@ -3,6 +3,7 @@ import re
 import json
 from typing import Dict, Any
 from pathlib import Path
+from typing import Dict, Any, List, Optional
 from urllib.parse import urljoin, urlsplit, quote
 from fastapi import APIRouter, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -151,6 +152,52 @@ async def get_status():
 async def validate_repo(request: ValidateRepoRequest):
     return analysis_service.validate_repository(request.repoUrl, request.patToken)
 
+class ValidateLocalRequest(BaseModel):
+    localPath: str
+
+@router.post("/validate-local")
+async def validate_local(request: ValidateLocalRequest):
+    """Validate that a local folder path exists and looks like a project directory."""
+    from pathlib import Path as _Path
+    import os as _os
+    p = _Path(request.localPath.strip())
+    if not p.exists():
+        return {"isValid": False, "message": f"Path does not exist: {request.localPath}"}
+    if not p.is_dir():
+        return {"isValid": False, "message": "Path is not a directory"}
+    
+    # Check for common project indicators
+    indicators = ["pom.xml", "build.gradle", "build.gradle.kts", "package.json",
+                  "requirements.txt", "pyproject.toml", "Cargo.toml", "go.mod", "*.csproj"]
+    found = []
+    for ind in indicators:
+        if "*" in ind:
+            ext = ind.replace("*", "")
+            for f in p.iterdir():
+                if f.suffix == ext:
+                    found.append(f.name)
+                    break
+        elif (p / ind).exists():
+            found.append(ind)
+    
+    project_name = p.name
+    if found:
+        return {
+            "isValid": True,
+            "projectName": project_name,
+            "message": f"Project detected: {project_name} ({', '.join(found[:3])})",
+            "detectedFiles": found
+        }
+    else:
+        # Still allow it but with a warning
+        return {
+            "isValid": True,
+            "projectName": project_name,
+            "message": f"Directory found: {project_name}. No standard project files detected, but will attempt analysis.",
+            "detectedFiles": []
+        }
+
+
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalyzeRequest):
     if request.provider:
@@ -181,14 +228,28 @@ async def analyze(request: AnalyzeRequest):
     # We will pass the full local path if it was used, else use the default workspace logic.
     if request.localPath:
         repo_path_str = request.localPath
+        # Register local path so tree/file APIs can resolve it by folder name
+        local_folder_name = Path(request.localPath.strip()).name
+        app_config.register_local_path(local_folder_name, request.localPath.strip())
     else:
         # Construct path based on analysis logic
-        repo_name = request.repoUrl.split('/')[-1].replace('.git', '')
-        repo_path_str = str(app_config.workspace_directory / repo_name)
+        repo_name = request.repoUrl.split('/')[-1].replace('.git', '') if request.repoUrl else ''
+        if repo_name:
+            repo_path_str = str(app_config.workspace_directory / repo_name)
+        else:
+            repo_path_str = str(app_config.workspace_directory)
+    
+    # Derive a display name for the pipeline
+    if request.repoUrl:
+        pipeline_repo_name = request.repoUrl.split('/')[-1].replace('.git', '')
+    elif request.localPath:
+        pipeline_repo_name = Path(request.localPath.strip()).name
+    else:
+        pipeline_repo_name = 'unknown'
         
     run_dynamic_analysis_pipeline.delay(
         repo_path_str, 
-        request.repoUrl.split('/')[-1].replace('.git', ''), 
+        pipeline_repo_name, 
         request.apiKey, 
         request.modelName, 
         request.provider
@@ -479,7 +540,15 @@ async def chat(request: ChatRequest):
         user_prompt = f"{rag_context}\nUser Question: {request.message}"
         
         ai_client = AIFactory.get_client()
-        answer = ai_client.generate(user_prompt, system_instruction, request.apiKey, request.modelName)
+        
+        import asyncio
+        try:
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(ai_client.generate, user_prompt, system_instruction, request.apiKey, request.modelName),
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            return ChatResponse(response="I apologize, but the AI service is taking too long to respond. Please try again or check your API key settings.")
         
         return ChatResponse(response=answer)
     except Exception as e:
@@ -943,17 +1012,36 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
     # Run tests in the background (non-blocking)
     async def _run():
         from app.services.project_runner_service import project_runner_service
-        status = project_runner_service.get_status(repo_name).get("status")
-        if status not in ["RUNNING", "RUNNING_API"]:
+        try:
+            status = project_runner_service.get_status(repo_name).get("status")
+            if status not in ["RUNNING", "RUNNING_API"]:
+                try:
+                    await project_runner_service.start_project(repo_name)
+                    # Poll until status is RUNNING, RUNNING_API or FAILED (max 5 minutes)
+                    for _ in range(60):
+                        await asyncio.sleep(5)
+                        current_status = project_runner_service.get_status(repo_name).get("status")
+                        if current_status in ["RUNNING", "RUNNING_API"]:
+                            break
+                        if current_status == "FAILED":
+                            print(f"[Playwright Task] Project startup failed. Skipping tests.")
+                            playwright_service._results[repo_name] = playwright_service._error("Application failed to build or start. Check project runner logs.")
+                            return
+                except Exception as e:
+                    print(f"[Playwright Task] Failed to start project runner automatically: {e}")
+                    
+            await playwright_service.run_playwright_tests(repo_name, project_dir)
+        except Exception as e:
+            print(f"[Playwright Task] Unhandled error in background task: {e}")
+            import traceback
+            traceback.print_exc()
+            playwright_service._results[repo_name] = playwright_service._error(f"Test execution crashed: {e}")
+        finally:
             try:
-                await project_runner_service.start_project(repo_name)
-                # Wait for Spring Boot / App to spin up fully
-                import asyncio
-                await asyncio.sleep(10)
-            except Exception as e:
-                print(f"Failed to start project runner automatically: {e}")
-                
-        await playwright_service.run_playwright_tests(repo_name, project_dir)
+                print(f"[Playwright Task] Stopping project runner to free port.")
+                await project_runner_service.stop_project(repo_name)
+            except Exception as stop_err:
+                print(f"[Playwright Task] Failed to stop project runner: {stop_err}")
 
     background_tasks.add_task(_run)
     return JSONResponse(content={**detection, "status": "RUNNING"})
@@ -1045,8 +1133,16 @@ async def run_migration_selenium(id: str, background_tasks: BackgroundTasks):
         if runner_status not in ["RUNNING", "RUNNING_API"]:
             try:
                 await project_runner_service.start_project(id)
-                import asyncio
-                await asyncio.sleep(10)  # Wait for the app to fully spin up
+                # Poll until status is RUNNING, RUNNING_API or FAILED (max 5 minutes)
+                for _ in range(60):
+                    await asyncio.sleep(5)
+                    current_status = project_runner_service.get_status(id).get("status")
+                    if current_status in ["RUNNING", "RUNNING_API"]:
+                        break
+                    if current_status == "FAILED":
+                        print(f"[Selenium Task] Project startup failed. Skipping tests.")
+                        selenium_service._results[id] = {**detection, "status": "FAILED"}
+                        return
             except Exception as e:
                 print(f"[Selenium] Failed to auto-start project runner: {e}")
         await selenium_service.run_selenium_tests(id, project_dir)
@@ -1253,4 +1349,293 @@ async def get_dynamic_analysis_status(projectId: str):
             return data
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-        
+
+
+# ── Summary Metadata Endpoint ────────────────────────────────────────────────
+# NEW additive endpoint — reads existing JSON caches and computes enriched
+# card-level metadata for the interactive popups on the Testing Strategy page.
+# Does NOT modify any existing logic, routes, or services.
+
+_summary_metadata_cache: dict = {}  # in-memory LRU: {project_name: (timestamp, data)}
+_SUMMARY_CACHE_TTL = 60  # seconds
+
+@router.get("/reports/summary-metadata/{projectId:path}")
+async def get_summary_metadata(projectId: str):
+    import time as _time
+    from urllib.parse import quote
+
+    try:
+        project_name = projectId.split("/")[-1].replace(".git", "") if "/" in projectId else projectId
+        safe_dir_name = quote(project_name, safe='')
+
+        # Check in-memory cache first
+        cached = _summary_metadata_cache.get(project_name)
+        if cached:
+            ts, data = cached
+            if _time.time() - ts < _SUMMARY_CACHE_TTL:
+                return JSONResponse(content=data)
+
+        reports_base = get_reports_dir()
+        ui_json_path = reports_base / safe_dir_name / "ui-functional-test-scope.json"
+        api_json_path = reports_base / safe_dir_name / "api-functional-test-scope.json"
+
+        if not ui_json_path.exists() and not api_json_path.exists():
+            return JSONResponse(status_code=200, content={"status": "NOT_READY"})
+
+        # ── Load UI test cases ─────────────────────────────────────────────
+        ui_test_cases = []
+        ui_metrics = {}
+        if ui_json_path.exists():
+            try:
+                raw = json.loads(ui_json_path.read_text(encoding="utf-8"))
+                ui_test_cases = raw.get("test_cases", []) if isinstance(raw, dict) else []
+                ui_metrics = raw.get("metrics", {}) if isinstance(raw, dict) else {}
+            except Exception:
+                pass
+
+        # ── Load API test cases ────────────────────────────────────────────
+        api_test_cases = []
+        if api_json_path.exists():
+            try:
+                raw = json.loads(api_json_path.read_text(encoding="utf-8"))
+                api_test_cases = raw if isinstance(raw, list) else raw.get("test_cases", [])
+            except Exception:
+                pass
+
+        # ─────────────────────────────────────────────────────────────────
+        # UI SUMMARY COMPUTATIONS
+        # ─────────────────────────────────────────────────────────────────
+
+        # Filter fallbacks
+        valid_ui = [tc for tc in ui_test_cases
+                    if tc.get("scenario") not in ("Basic Load Test", "Fallback Scenario")]
+
+        total_ui = len(valid_ui)
+
+        # Module grouping — use route as module key
+        module_map: dict = {}
+        for tc in valid_ui:
+            route = (tc.get("route") or tc.get("scenario") or "Unknown").strip()
+            module_map.setdefault(route, []).append(tc.get("scenario", "Test Case"))
+
+        modules_list = [
+            {"name": route, "scenarios": scenarios}
+            for route, scenarios in module_map.items()
+        ]
+
+        # Complexity calculation
+        high = medium = low = 0
+        complexity_reasons = []
+        for tc in valid_ui:
+            steps_raw = tc.get("steps", "")
+            if isinstance(steps_raw, list):
+                step_count = len(steps_raw)
+            else:
+                step_count = len([s for s in str(steps_raw).split("\n") if s.strip()])
+            if step_count > 5:
+                high += 1
+            elif step_count >= 3:
+                medium += 1
+            else:
+                low += 1
+
+        if high > medium and high > low:
+            avg_complexity = "High"
+        elif medium > low or high > 0:
+            avg_complexity = "Medium-High"
+        elif medium > 0:
+            avg_complexity = "Medium"
+        else:
+            avg_complexity = "Low"
+
+        # Dynamic complexity reasons based on actual data
+        forms_detected = ui_metrics.get("forms_detected", 0)
+        routes_count = ui_metrics.get("detected_routes", len(module_map))
+        if high > 0:
+            complexity_reasons.append(f"{high} test(s) with >5 execution steps (High complexity)")
+        if medium > 0:
+            complexity_reasons.append(f"{medium} test(s) with 3–5 steps (Medium complexity)")
+        if forms_detected > 0:
+            complexity_reasons.append(f"{forms_detected} form(s) with validation logic detected")
+        if routes_count > 3:
+            complexity_reasons.append(f"{routes_count} distinct routes/pages to cover")
+
+        # Execution estimate — avg 6 sec per test case
+        avg_sec_per_test = 6
+        total_sec = total_ui * avg_sec_per_test
+        est_mins = max(1, round(total_sec / 60, 1)) if total_ui > 0 else 0
+
+        # Per-module execution estimate for fastest/slowest
+        module_times = []
+        for mod in modules_list:
+            mod_tests = len(mod["scenarios"])
+            mod_sec = mod_tests * avg_sec_per_test
+            module_times.append({"module": mod["name"], "tests": mod_tests, "estimated_sec": mod_sec})
+
+        module_times_sorted = sorted(module_times, key=lambda x: x["estimated_sec"])
+        fastest_module = module_times_sorted[0] if module_times_sorted else None
+        slowest_module = module_times_sorted[-1] if module_times_sorted else None
+
+        # Breakdown by scenario type keywords
+        func_count = sum(1 for tc in valid_ui if any(k in (tc.get("scenario", "") + tc.get("type", "")).lower()
+                                                      for k in ["login", "register", "submit", "form", "button", "click"]))
+        validation_count = sum(1 for tc in valid_ui if any(k in (tc.get("scenario", "") + tc.get("steps", "")).lower()
+                                                            for k in ["valid", "invalid", "error", "required", "format"]))
+        edge_count = sum(1 for tc in valid_ui if any(k in (tc.get("scenario", "")).lower()
+                                                      for k in ["edge", "boundary", "empty", "null", "limit"]))
+        negative_count = sum(1 for tc in valid_ui if any(k in (tc.get("scenario", "")).lower()
+                                                          for k in ["negative", "fail", "wrong", "incorrect", "invalid"]))
+        ui_count = total_ui - func_count  # remainder
+
+        # ─────────────────────────────────────────────────────────────────
+        # API SUMMARY COMPUTATIONS
+        # ─────────────────────────────────────────────────────────────────
+
+        valid_api = [tc for tc in api_test_cases
+                     if tc.get("scenario") not in ("Fallback API Test",)]
+
+        total_api = len(valid_api)
+
+        # HTTP method counts
+        get_count = sum(1 for tc in valid_api if tc.get("method", "").upper() == "GET")
+        post_count = sum(1 for tc in valid_api if tc.get("method", "").upper() == "POST")
+        put_count = sum(1 for tc in valid_api if tc.get("method", "").upper() in ("PUT", "PATCH"))
+        delete_count = sum(1 for tc in valid_api if tc.get("method", "").upper() == "DELETE")
+        other_count = total_api - get_count - post_count - put_count - delete_count
+
+        # Endpoint tree grouped by source/controller
+        endpoint_map: dict = {}
+        for tc in valid_api:
+            source = tc.get("source") or "API"
+            path = tc.get("path", "/api")
+            method = tc.get("method", "GET").upper()
+            key = f"{method} {path}"
+            endpoint_map.setdefault(source, {}).setdefault(key, []).append(tc.get("scenario", "Test"))
+
+        endpoints_tree = [
+            {
+                "controller": ctrl,
+                "endpoints": [
+                    {"endpoint": ep, "scenarios": scenarios}
+                    for ep, scenarios in endpoints.items()
+                ]
+            }
+            for ctrl, endpoints in endpoint_map.items()
+        ]
+
+        unique_endpoints = list({f"{tc.get('method','GET').upper()} {tc.get('path','/api')}" for tc in valid_api})
+
+        # Coverage scope determination
+        methods_present = list({tc.get("method", "GET").upper() for tc in valid_api})
+        has_get = "GET" in methods_present
+        has_post = "POST" in methods_present
+        has_delete = "DELETE" in methods_present
+        has_put = "PUT" in methods_present or "PATCH" in methods_present
+
+        coverage_flags = {
+            "Authentication": any(k in str(valid_api).lower() for k in ["auth", "login", "token", "jwt"]),
+            "Authorization": any(k in str(valid_api).lower() for k in ["authoriz", "role", "permission", "forbidden", "403"]),
+            "CRUD Operations": has_get and has_post,
+            "Business Flow": has_post and (has_put or has_delete),
+            "Exception Handling": any(k in str(valid_api).lower() for k in ["error", "exception", "invalid", "400", "404", "500"]),
+            "Integration": len(endpoint_map) > 1,
+            "Performance Ready": total_api >= 10,
+        }
+
+        # Mock data categories from actual test cases
+        mock_categories = []
+        all_api_text = json.dumps(valid_api).lower()
+        if any(k in all_api_text for k in ["user", "username", "email", "password"]):
+            mock_categories.append({
+                "category": "User Data",
+                "items": ["username", "email", "password", "userId", "profileData"]
+            })
+        if any(k in all_api_text for k in ["product", "item", "catalog"]):
+            mock_categories.append({
+                "category": "Product Data",
+                "items": ["productId", "productName", "price", "category", "inventory"]
+            })
+        if any(k in all_api_text for k in ["order", "cart", "checkout", "purchase"]):
+            mock_categories.append({
+                "category": "Order / Cart Data",
+                "items": ["orderId", "cartItems", "totalAmount", "shippingAddress"]
+            })
+        if any(k in all_api_text for k in ["token", "jwt", "bearer", "auth"]):
+            mock_categories.append({
+                "category": "Auth Tokens",
+                "items": ["JWT Bearer Token", "Refresh Token", "Authorization Headers"]
+            })
+        # Always include request/response payloads
+        mock_categories.append({
+            "category": "Request Payloads",
+            "items": [f"{tc.get('method','GET')} {tc.get('path','/api')}" for tc in valid_api[:6]]
+        })
+        mock_categories.append({
+            "category": "Response Payloads",
+            "items": ["200 OK body", "201 Created body", "400 Error body", "404 Not Found body", "500 Server Error body"]
+        })
+
+        # ─────────────────────────────────────────────────────────────────
+        # BUILD RESPONSE
+        # ─────────────────────────────────────────────────────────────────
+        result = {
+            "status": "READY",
+            "project": project_name,
+            "ui": {
+                "total": total_ui,
+                "breakdown": {
+                    "functional": max(0, func_count),
+                    "validation": max(0, validation_count),
+                    "edge_case": max(0, edge_count),
+                    "negative": max(0, negative_count),
+                    "ui_interaction": max(0, ui_count),
+                },
+                "modules": modules_list,
+                "complexity": {
+                    "level": avg_complexity,
+                    "high": high,
+                    "medium": medium,
+                    "low": low,
+                    "reasons": complexity_reasons,
+                    "factors": {
+                        "validations": forms_detected,
+                        "routes": routes_count,
+                        "high_complexity_tests": high,
+                        "medium_complexity_tests": medium,
+                        "low_complexity_tests": low,
+                    }
+                },
+                "execution": {
+                    "total_tests": total_ui,
+                    "avg_sec_per_test": avg_sec_per_test,
+                    "total_sec": total_sec,
+                    "est_mins": est_mins,
+                    "fastest_module": fastest_module,
+                    "slowest_module": slowest_module,
+                    "module_breakdown": module_times,
+                }
+            },
+            "api": {
+                "total": total_api,
+                "breakdown": {
+                    "get": get_count,
+                    "post": post_count,
+                    "put_patch": put_count,
+                    "delete": delete_count,
+                    "other": other_count,
+                },
+                "unique_endpoints": unique_endpoints,
+                "endpoints_tree": endpoints_tree,
+                "coverage": coverage_flags,
+                "mock_categories": mock_categories,
+            }
+        }
+
+        # Store in memory cache
+        _summary_metadata_cache[project_name] = (_time.time(), result)
+        return JSONResponse(content=result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})

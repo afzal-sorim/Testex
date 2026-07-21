@@ -38,7 +38,6 @@ class ConvertRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    sessionId: Optional[str] = None
     apiKey: Optional[str] = None
     provider: Optional[str] = None
     modelName: Optional[str] = None
@@ -76,6 +75,7 @@ class AnalysisResponse(BaseModel):
     sessionId: Optional[str] = None
     testMetrics: Optional[Dict[str, Any]] = None
     existingTestDetails: Optional[Dict[str, Any]] = None
+    detectionReasoning: Dict[str, Any] = {}
 
 class MigrationResponse(BaseModel):
     success: bool

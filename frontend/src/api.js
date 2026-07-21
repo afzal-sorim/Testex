@@ -219,6 +219,12 @@ export const validateRepository = async (repoUrl, patToken = null) => {
   return response.data;
 };
 
+export const validateLocalPath = async (localPath) => {
+  const response = await apiClient.post('/validate-local', { localPath });
+  return response.data;
+};
+
+
 // --- Discovery Endpoints ---
 
 export const getRepositoryTree = async (repositoryId) => {
@@ -258,6 +264,11 @@ export const getUiTestCasesData = async (repoName) => {
 
 export const getApiTestCasesData = async (repoName) => {
   const response = await apiClient.get(`/reports/api-test-cases/data/${encodeURIComponent(repoName)}`);
+  return response.data;
+};
+
+export const getSummaryMetadata = async (repoName) => {
+  const response = await apiClient.get(`/reports/summary-metadata/${encodeURIComponent(repoName)}`);
   return response.data;
 };
 
