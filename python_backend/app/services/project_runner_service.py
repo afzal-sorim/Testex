@@ -969,10 +969,10 @@ class ProjectRunnerService:
 
         elif project_type == "React / Vite":
             # Vite handles port through double dash or port argument
-            run_cmd = f"npx vite --port {port} --host 127.0.0.1"
+            run_cmd = f"npx vite --port {port} --host 0.0.0.0"
 
         elif project_type == "Angular":
-            run_cmd = f"npx ng serve --port {port} --host 127.0.0.1"
+            run_cmd = f"npx ng serve --port {port} --host 0.0.0.0"
 
         elif project_type == "Node.js frontend":
             env["PORT"] = str(port)

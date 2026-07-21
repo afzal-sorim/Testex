@@ -115,8 +115,8 @@ class PlaywrightService:
 
     def get_status(self, repo_name: str, project_dir=None) -> Dict[str, Any]:
         """Return the latest status for repo_name by checking the disk."""
-        # Keep RUNNING state if background task is active
-        if repo_name in self._results and self._results[repo_name].get("status") == "RUNNING":
+        # If we have an in-memory result (RUNNING, ERROR, SUCCESS, FAILED), return it!
+        if repo_name in self._results:
             return self._results[repo_name]
             
         if project_dir and Path(project_dir).exists():
@@ -411,7 +411,10 @@ test.describe('Navigation & Core Routing', () => {
                 if preferred_path:
                     target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
             elif port:
-                target_url = f"http://127.0.0.1:{port}"
+                if os.environ.get("PLAYWRIGHT_SERVICE_URL"):
+                    target_url = f"http://backend:{port}"
+                else:
+                    target_url = f"http://127.0.0.1:{port}"
                 if preferred_path:
                     target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
         
