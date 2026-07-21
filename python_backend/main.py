@@ -13,8 +13,8 @@ app.add_middleware(
         "https://testex-1.onrender.com",
     ],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(api.router, prefix="/api")
@@ -24,4 +24,3 @@ app.include_router(technical_documents.router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
