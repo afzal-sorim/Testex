@@ -57,6 +57,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - PLAYWRIGHT_SERVICE_URL=http://playwright:3000
       - APP_WORK_DIR=/app/workspace
     depends_on:
       - redis

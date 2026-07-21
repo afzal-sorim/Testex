@@ -419,6 +419,8 @@ test.describe('Navigation & Core Routing', () => {
                     target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
         
         if target_url:
+            if os.environ.get("PLAYWRIGHT_SERVICE_URL") and ("127.0.0.1" in target_url or "localhost" in target_url):
+                target_url = target_url.replace("127.0.0.1", "backend").replace("localhost", "backend")
             env["BASE_URL"] = target_url
             env["PLAYWRIGHT_BASE_URL"] = target_url
             print(f"[PlaywrightService] Target URL for '{repo_name}' set to: {target_url}")
