@@ -115,29 +115,12 @@ class PlaywrightService:
 
     def get_status(self, repo_name: str, project_dir=None) -> Dict[str, Any]:
         """Return the latest status for repo_name by checking the disk."""
-        # Keep active/completed/error states if background task set them
-        if repo_name in self._results:
-            cached_status = self._results[repo_name].get("status")
-            # If RUNNING, also check if results appeared on disk (self-healing fallback)
-            if cached_status == "RUNNING":
-                if project_dir:
-                    json_report_path = Path(project_dir) / "playwright-report" / "test-results.json"
-                    if json_report_path.exists():
-                        try:
-                            html_dir = Path(project_dir) / "playwright-report"
-                            result = self._parse_json_results(json_report_path, html_dir, repo_name)
-                            self._results[repo_name] = result
-                            return result
-                        except Exception:
-                            pass
-                return self._results[repo_name]
-            # Also preserve terminal states set by the background task
-            if cached_status in ("ERROR", "FAILED", "PASSED", "COMPLETED", "SUCCESS"):
-                return self._results[repo_name]
+        # Keep RUNNING state if background task is active
+        if repo_name in self._results and self._results[repo_name].get("status") == "RUNNING":
+            return self._results[repo_name]
             
         if project_dir and Path(project_dir).exists():
             status = self.detect_playwright(Path(project_dir))
-            # If detect_playwright parsed actual test-results.json, set the status to overall status (e.g. PASSED / FAILED)
             self._results[repo_name] = status
             return status
             
@@ -357,9 +340,7 @@ test.describe('Navigation & Core Routing', () => {
     const images = await page.locator('img').all();
     for (const img of images) {{
       const alt = await img.getAttribute('alt');
-      if (alt === null) {{
-        console.warn(`[Accessibility Warning] Image is missing an 'alt' attribute.`);
-      }}
+      expect(alt).not.toBeNull();
     }}
   }});
 
@@ -449,13 +430,12 @@ test.describe('Navigation & Core Routing', () => {
         if json_report_path.exists():
             json_report_path.unlink()
 
-        # Step 1: npm install (only if node_modules/ or @playwright/test is missing)
-        if not (project_dir / "node_modules").exists() or not (project_dir / "node_modules" / "@playwright" / "test").exists():
+        # Step 1: npm install (only if node_modules is missing)
+        if not (project_dir / "node_modules").exists():
             ok, output = await self._run_subprocess(
                 ["npm", "install", "--prefer-offline"],
                 project_dir,
                 env,
-                timeout=600,
             )
             if not ok:
                 return self._error(f"npm install failed:\n{output[-3000:]}")
@@ -465,18 +445,16 @@ test.describe('Navigation & Core Routing', () => {
                 ["npx", "playwright", "install", "chromium", "--with-deps"],
                 project_dir,
                 env,
-                timeout=600,
             )
 
-        # Step 3: Run playwright tests with HTML + JSON reporters
+        # Step 3: Run playwright tests with HTML + JSON reporters in headed mode
         cmd = [
             "npx", "playwright", "test",
             "--reporter=html,json",
             "--timeout=30000",
-            "--workers=2",
         ]
 
-        ok, output = await self._run_subprocess(cmd, project_dir, env, timeout=600)
+        ok, output = await self._run_subprocess(cmd, project_dir, env)
 
         # Parse JSON results (even if tests failed, JSON is still written)
         if json_report_path.exists():
@@ -564,10 +542,11 @@ test.describe('Navigation & Core Routing', () => {
             return self._error(f"Failed to communicate with external Playwright validation service at {url}: {exc}")
 
 
-    async def _run_subprocess(self, cmd: list, cwd: Path, env: dict, timeout: int = 300):
+    async def _run_subprocess(self, cmd: list, cwd: Path, env: dict):
         """Run a subprocess asynchronously and return (success, combined_output)."""
         import sys
         import shutil
+        import subprocess
         
         executable = cmd[0]
         if sys.platform == "win32":
@@ -578,24 +557,23 @@ test.describe('Navigation & Core Routing', () => {
         if full_path:
             cmd[0] = full_path
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
+        def run_sync():
+            return subprocess.run(
+                cmd,
                 cwd=str(cwd),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 env=env,
+                timeout=300,
+                text=True,
+                errors="replace"
             )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-            output = stdout.decode("utf-8", errors="replace") if stdout else ""
-            return proc.returncode == 0, output
-        except asyncio.TimeoutError:
-            # Kill the timed-out process to avoid orphans
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            return False, f"Process timed out after {timeout} seconds."
+
+        try:
+            proc = await asyncio.to_thread(run_sync)
+            return proc.returncode == 0, proc.stdout
+        except subprocess.TimeoutExpired:
+            return False, "Process timed out after 300 seconds."
         except Exception as e:
             return False, f"Failed to start process: {e}"
 

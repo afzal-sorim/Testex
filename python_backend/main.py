@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import api
 from app.routers import api_keys
 from app.routers import technical_documents
+from app.services.rag_service import rag_service
+import asyncio
 
 app = FastAPI(title="Assistant API")
 
@@ -20,6 +22,10 @@ app.add_middleware(
 app.include_router(api.router, prefix="/api")
 app.include_router(api_keys.router)
 app.include_router(technical_documents.router)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(asyncio.to_thread(rag_service.initialize_rag))
 
 if __name__ == "__main__":
     import uvicorn

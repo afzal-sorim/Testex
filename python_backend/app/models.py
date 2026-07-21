@@ -38,7 +38,6 @@ class ConvertRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    sessionId: Optional[str] = None
     apiKey: Optional[str] = None
     provider: Optional[str] = None
     modelName: Optional[str] = None
@@ -52,12 +51,6 @@ class TaskResponse(BaseModel):
     status: str
 
 from app.brd_models import FullBrdReport
-
-class TechDetail(BaseModel):
-    value: str
-    reason: str
-    evidenceFile: Optional[str] = None
-    evidenceLine: Optional[int] = None
 
 class AnalysisResponse(BaseModel):
     repoUrl: str
@@ -73,7 +66,6 @@ class AnalysisResponse(BaseModel):
     frontendFramework: Optional[str] = None   # "React", "Angular", "Vue", "Thymeleaf", "JSP"
     endpointCount: int = 0
     riskLevel: Optional[str] = None           # "Low", "Medium", "High"
-    techDetails: Optional[Dict[str, TechDetail]] = None
     deprecatedApis: List[str] = []
     dependencies: List[str] = []
     frameworkVersions: Dict[str, str] = {}
@@ -83,6 +75,8 @@ class AnalysisResponse(BaseModel):
     sessionId: Optional[str] = None
     testMetrics: Optional[Dict[str, Any]] = None
     existingTestDetails: Optional[Dict[str, Any]] = None
+    detectionReasoning: Dict[str, Any] = {}
+
 class MigrationResponse(BaseModel):
     success: bool
     targetVersion: str

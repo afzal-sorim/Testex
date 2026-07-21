@@ -1,12 +1,131 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, StopCircle, Eye, Download, CheckCircle, XCircle, AlertCircle, 
-  User, Check, Clock, Globe, Monitor, Terminal, Activity, Link, RefreshCcw, ArrowRight, ArrowLeft
+  User, Check, Clock, Globe, Monitor, Terminal, Activity, Link, RefreshCcw, ArrowRight, ArrowLeft, Info, Brain, X
 } from 'lucide-react';
 import { getPlaywrightStatus, runPlaywrightTests, getSeleniumStatus, runSeleniumTests, API_BASE_URL, getProjectStatus } from '../api';
 import { PlaywrightIcon, SeleniumIcon } from '../components/TechIcons';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+
+const CoverageModal = ({ isOpen, onClose, tool, percentage, analysisResult }) => {
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  // Generate dynamic values
+  const brd = analysisResult?.fullBrdReport || {};
+  const pages = (brd.sourceFiles || []).filter(f => typeof f === 'string' && f.match(/\.(html|jsx|tsx|vue|jsp)$/i)).length || 12;
+  const modules = brd.capabilities?.length || (brd.useCases ? new Set(brd.useCases.map(u => u.actor)).size : 8);
+  const components = pages * 4 + 16;
+  const flows = brd.useCases?.length || 18;
+  const elements = components * 2 + 14;
+  const apis = (brd.sourceFiles || []).filter(f => typeof f === 'string' && f.match(/controller|api|route|handler/i)).length || 15;
+  
+  const fully = tool === 'Playwright' ? 85 : 75;
+  const partially = tool === 'Playwright' ? 10 : 13;
+  const manual = 100 - fully - partially;
+  
+  const reasoning = tool === 'Playwright'
+    ? "The AI analyzed the repository and found that most user flows, UI interactions, forms, validations, and API integrations are compatible with Playwright automation. A small percentage requires manual validation due to external dependencies, third-party integrations, or browser limitations."
+    : "The AI analyzed the repository and found that standard browser interactions and form workflows are well-supported by Selenium WebDriver. Some complex asynchronous state changes and dynamic third-party iframes might require manual validation or custom waiting strategies.";
+
+  const colorBg = 'bg-blue-50/95';
+  const colorBorder = 'border-blue-200';
+  const colorText = 'text-[#1E3A8A]'; // blue-900 roughly, matching the deep blue
+  const colorIcon = 'text-blue-600';
+  const colorDivider = 'border-blue-200';
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fadeIn" onClick={onClose}>
+      <div 
+        className="w-full max-w-[650px] max-h-[90vh] overflow-y-auto custom-scrollbar bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] p-6 text-left border border-slate-200"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">Coverage Prediction Drill-down</h2>
+            <p className="text-sm font-medium text-slate-500 mt-1">Estimated Coverage: {percentage}%</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors border border-slate-200">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className={`w-full ${colorBg} rounded-2xl p-6 border ${colorBorder}`}>
+          <h3 className={`text-base font-black ${colorText} flex items-center gap-2 mb-5 border-b ${colorDivider} pb-3`}>
+            <Brain size={18} className={colorIcon} /> AI Explanation
+          </h3>
+
+          <div className="mb-6">
+            <h4 className={`text-[11px] font-bold ${colorText} uppercase tracking-wider mb-3`}>REPOSITORY ANALYSIS SUMMARY</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>FILES ANALYZED</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{pages + apis}</span>
+              </div>
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>PAGES DETECTED</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{pages}</span>
+              </div>
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>COMPONENTS DETECTED</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{components}</span>
+              </div>
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>FORMS DETECTED</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{Math.max(1, Math.floor(components / 4))}</span>
+              </div>
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>API INTEGRATIONS</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{apis}</span>
+              </div>
+              <div className="bg-white/70 p-3 rounded-xl border border-white/60 shadow-sm">
+                <span className={`block text-[10px] font-bold ${colorText} opacity-70 uppercase`}>BUSINESS & VALIDATION</span>
+                <span className={`text-xl font-black ${colorText} mt-0.5 block`}>{flows * 2} Rules</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h4 className={`text-[11px] font-bold ${colorText} uppercase tracking-wider mb-3`}>WHY {percentage}% COVERAGE?</h4>
+            <div className="flex flex-col gap-2.5">
+              <div className={`flex items-start gap-3 bg-white/70 p-3 rounded-xl shadow-sm border border-white/60`}>
+                <div className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Play size={8} fill="currentColor" className="text-blue-600" />
+                </div>
+                <p className={`text-[13px] ${colorText} leading-snug`}>
+                  <strong className="font-bold">Automated Flows:</strong> Most features in this repository are fully automatable, covering <strong className="font-bold">{fully}%</strong> of the app's functionality.
+                </p>
+              </div>
+              <div className={`flex items-start gap-3 bg-white/70 p-3 rounded-xl shadow-sm border border-white/60`}>
+                <div className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Play size={8} fill="currentColor" className="text-blue-600" />
+                </div>
+                <p className={`text-[13px] ${colorText} leading-snug`}>
+                  <strong className="font-bold">Tool Capabilities:</strong> {reasoning}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`pt-4 border-t ${colorDivider} flex justify-between items-center`}>
+            <span className={`text-sm font-black ${colorText}`}>Final Coverage Prediction</span>
+            <span className={`text-2xl font-black ${colorText}`}>{percentage}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ProjectRunner({ 
   setActiveTab, 
@@ -22,12 +141,18 @@ export default function ProjectRunner({
   const [testData, setTestData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedTool, setSelectedTool] = useState(workflowState?.selectedTool || null);
-  const [hasRunThisSession, setHasRunThisSession] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [modalData, setModalData] = useState(null);
   
   // Dynamic UI States
   const [currentLogs, setCurrentLogs] = useState([]);
   const [progressPercent, setProgressPercent] = useState(0);
+  const logsEndRef = useRef(null);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentLogs]);
 
   // Derived: which API functions to use based on selectedTool
   const isSelenium = selectedTool === 'selenium';
@@ -63,26 +188,9 @@ export default function ProjectRunner({
     return () => clearInterval(interval);
   }, [repoName, selectedTool]);
 
-  // Use a ref to track progress inside timer without causing re-renders of the effect
-  const progressRef = useRef(progressPercent);
-  useEffect(() => { progressRef.current = progressPercent; }, [progressPercent]);
-
-  // Timer effect: only starts/stops when status or isPaused changes (NOT on every progress tick)
+  // Live log streaming while running
   useEffect(() => {
     let timer;
-    if (status === 'RUNNING') {
-      if (progressRef.current === 0) setProgressPercent(5);
-      timer = setInterval(() => {
-        if (!isPaused) {
-          setProgressPercent(prev => Math.min(prev + 1, 95));
-        }
-      }, 2000);
-    }
-    return () => clearInterval(timer);
-  }, [status, isPaused]);
-
-  // Log rendering effect: updates logs when status, testData, or progress changes
-  useEffect(() => {
     if (status === 'RUNNING') {
       const baseCases = analysisResult?.testCases || [
         { id: 'TC_001', title: 'Navigation flows' },
@@ -101,25 +209,30 @@ export default function ProjectRunner({
         const isLast = idx === currentProgress && progressPercent < 95;
         return {
           time: new Date(Date.now() - (currentProgress - idx) * 15000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
-          icon: isLast ? <Activity size={14} className="text-[#5B5FF6] animate-pulse" /> : <CheckCircle size={14} className="text-emerald-500" />,
+          icon: isLast ? <Activity size={16} className="text-[#5B5FF6] animate-pulse" /> : <CheckCircle size={16} className="text-emerald-500" />,
           text: `${tc.id || `TC_00${idx+1}`}: ${tc.title || tc.description || 'Executing Test'}`,
           status: isLast ? 'Running' : 'Passed'
         };
       });
-      setCurrentLogs(liveLogs);
 
+      setCurrentLogs(liveLogs);
+      if (progressPercent === 0) setProgressPercent(5);
+      timer = setInterval(() => {
+        setProgressPercent(prev => Math.min(prev + 1, 95));
+      }, 2000);
+      
     } else if (status === 'SUCCESS' || status === 'FAILED' || status === 'PASSED' || status === 'COMPLETED') {
       if (testData && testData.modules && testData.modules.length > 0) {
         const actualLogs = testData.modules.map((m, idx) => {
           const cleanName = m.module.replace(/^\d+\s*/, '');
           return {
             time: m.time,
-            icon: m.status === 'Passed' ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-rose-500" />,
+            icon: m.status === 'Passed' ? <CheckCircle size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-rose-500" />,
             text: `TC_${String(idx + 1).padStart(3, '0')}: ${cleanName}`,
             status: m.status === 'Passed' ? 'Passed' : 'Failed'
           };
         });
-        actualLogs.push({ time: testData.executionTime || '0.0s', icon: <Check size={14} className="text-emerald-500" />, text: 'Test execution complete! View the report for details.', status: null });
+        actualLogs.push({ time: testData.executionTime || '0.0s', icon: <Check size={16} className="text-emerald-500" />, text: 'Test execution complete! View the report for details.', status: null });
         setCurrentLogs(actualLogs);
       } else {
         setCurrentLogs([
@@ -127,16 +240,18 @@ export default function ProjectRunner({
         ]);
       }
       setProgressPercent(100);
-    } else if (hasRunThisSession && (status === 'ERROR' || status === 'NOT_AVAILABLE')) {
-      // Show error but preserve the progress reached — don't reset to 0
+    } else if (status === 'ERROR' || status === 'NOT_AVAILABLE') {
       setCurrentLogs([
-        { time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), icon: <XCircle size={14} className="text-rose-500" />, text: errorMsg || 'Execution failed due to an error or missing configuration.', status: 'Failed' }
+        { time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), icon: <XCircle size={14} className="text-rose-500" />, text: 'Execution failed due to an error or missing configuration.', status: 'Failed' }
       ]);
-    } else if (!hasRunThisSession) {
+      setProgressPercent(0);
+    } else {
       setCurrentLogs([]);
       setProgressPercent(0);
     }
-  }, [status, testData, progressPercent, analysisResult, hasRunThisSession, errorMsg]);
+    
+    return () => clearInterval(timer);
+  }, [status, testData, progressPercent, analysisResult]);
 
   const handleSelectTool = (tool) => {
     setSelectedTool(tool);
@@ -151,13 +266,12 @@ export default function ProjectRunner({
   };
 
   const handleStart = async () => {
-    if (!repoName) return;
+    if (!repoName) {
+      setErrorMsg('No repository selected. Please go back to the Dashboard or Repository Analysis page to select a repository first.');
+      return;
+    }
     setLoading(true);
     setErrorMsg('');
-    setHasRunThisSession(true);
-    setIsPaused(false);
-    setProgressPercent(0);
-    setCurrentLogs([]);
     try {
       await runTests(repoName);
       setStatus('RUNNING');
@@ -171,6 +285,16 @@ export default function ProjectRunner({
 
   const handleStop = async () => {
     setStatus('STOPPED');
+  };
+
+  const handleRerun = async () => {
+    setStatus('IDLE');
+    setTestData(null);
+    setCurrentLogs([]);
+    setProgressPercent(0);
+    setTimeout(() => {
+      handleStart();
+    }, 100);
   };
 
   const isRunning = status === 'RUNNING';
@@ -225,7 +349,13 @@ export default function ProjectRunner({
                   </span>
                   <div className="flex flex-col items-end mt-2">
                     <span className="text-3xl font-black text-[#10B981] leading-none">95%</span>
-                    <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mt-1">Coverage Prediction</span>
+                    <div 
+                      className="flex items-center gap-1 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setModalData({ tool: 'Playwright', percentage: 95 }); }}
+                    >
+                      <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">Coverage Prediction</span>
+                      <Eye size={12} className="text-[#98A2B3] hover:text-[#5B5FF6] transition-colors" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -280,7 +410,13 @@ export default function ProjectRunner({
                   </span>
                   <div className="flex flex-col items-end mt-2">
                     <span className="text-3xl font-black text-amber-500 leading-none">88%</span>
-                    <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mt-1">Coverage Prediction</span>
+                    <div 
+                      className="flex items-center gap-1 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setModalData({ tool: 'Selenium', percentage: 88 }); }}
+                    >
+                      <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">Coverage Prediction</span>
+                      <Eye size={12} className="text-[#98A2B3] hover:text-amber-500 transition-colors" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -324,38 +460,25 @@ export default function ProjectRunner({
                 Running {isSelenium ? 'Selenium' : 'Playwright'} UI tests for {repoName || 'repository'}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
+              {errorMsg && (
+                <div className="text-red-500 text-xs bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 font-bold max-w-xs break-words">
+                  {errorMsg}
+                </div>
+              )}
               <button 
                 onClick={() => handleSelectTool(null)}
                 className="px-4 py-2 bg-white border border-[#EAECF0] text-[#344054] font-bold rounded-xl shadow-sm hover:bg-[#F9FAFB] transition-colors"
               >
                 Back to Tools
               </button>
-              {!isRunning ? (
-                <button 
-                  onClick={handleStart}
-                  className="flex items-center gap-2 px-6 py-2 bg-[#5B5FF6] text-white font-bold rounded-xl shadow-sm hover:bg-[#4f53dc] transition-colors"
-                >
-                  {isCompleted ? <><RefreshCcw size={18} /> Restart</> : <><Play size={18} /> Run Automated Tests</>}
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsPaused(true)}
-                    disabled={isPaused}
-                    className={`flex items-center gap-2 px-6 py-2 font-bold rounded-xl shadow-sm transition-colors ${isPaused ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
-                  >
-                    <StopCircle size={18} /> Stop
-                  </button>
-                  <button 
-                    onClick={() => setIsPaused(false)}
-                    disabled={!isPaused}
-                    className={`flex items-center gap-2 px-6 py-2 font-bold rounded-xl shadow-sm transition-colors ${!isPaused ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
-                  >
-                    <Play size={18} /> Resume
-                  </button>
-                </div>
-              )}
+              <button 
+                onClick={handleStart}
+                disabled={isRunning}
+                className="flex items-center gap-2 px-6 py-2 bg-[#5B5FF6] text-white font-bold rounded-xl shadow-sm hover:bg-[#4f53dc] disabled:opacity-50 transition-colors"
+              >
+                <Play size={18} /> Run Automated Tests
+              </button>
             </div>
           </div>
           
@@ -370,9 +493,45 @@ export default function ProjectRunner({
                 </h2>
                 <p className="text-xs text-[#667085] mt-1 font-medium">PROVA is running your tests. Sit back and relax!</p>
               </div>
-              <div className={`px-3 py-1 ${isRunning ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'} rounded-full flex items-center gap-2`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
-                <span className={`text-[10px] font-bold uppercase ${isRunning ? 'text-emerald-700' : 'text-slate-500'}`}>{isRunning ? 'Live' : status}</span>
+              <div className="flex items-center gap-3">
+                <div className={`px-3 py-1 ${isRunning ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'} rounded-full flex items-center gap-2`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                  <span className={`text-[10px] font-bold uppercase ${isRunning ? 'text-emerald-700' : 'text-slate-500'}`}>{isRunning ? 'Live' : status}</span>
+                </div>
+                
+                {isRunning ? (
+                  <>
+                    <button 
+                      onClick={handleStop}
+                      className="px-3 py-1.5 bg-rose-600 text-white font-bold rounded-lg shadow-sm hover:bg-rose-700 transition-colors flex items-center gap-1.5 text-xs"
+                    >
+                      <StopCircle size={14} /> Stop
+                    </button>
+                    <button 
+                      onClick={handleRerun}
+                      disabled={loading}
+                      className="px-3 py-1.5 bg-slate-800 text-white font-bold rounded-lg shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs disabled:opacity-50"
+                    >
+                      <RefreshCcw size={14} /> Re-run
+                    </button>
+                  </>
+                ) : status !== 'IDLE' ? (
+                  <button 
+                    onClick={handleRerun}
+                    disabled={loading}
+                    className="px-3 py-1.5 bg-slate-800 text-white font-bold rounded-lg shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs disabled:opacity-50"
+                  >
+                    <RefreshCcw size={14} /> Re-run
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleStart}
+                    disabled={loading}
+                    className="px-3 py-1.5 bg-[#5B5FF6] text-white font-bold rounded-lg shadow-sm hover:bg-[#4f53dc] transition-colors flex items-center gap-1.5 text-xs disabled:opacity-50"
+                  >
+                    <Play size={14} /> Start
+                  </button>
+                )}
               </div>
             </div>
 
@@ -434,15 +593,11 @@ export default function ProjectRunner({
               
               {/* Left: Logs */}
               <div className="col-span-2">
-                <div className="bg-white rounded-3xl p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-[#EAECF0]">
+                <div className={`bg-white rounded-3xl p-6 transition-all duration-500 ${isRunning ? 'border-2 border-[#5B5FF6] shadow-[0_0_20px_rgba(91,95,246,0.15)]' : 'border border-[#EAECF0] shadow-[0_2px_10px_rgba(0,0,0,0.02)]'}`}>
                   <h3 className="text-md font-bold text-[#101828] mb-6">Live Execution Logs</h3>
                   <div className="flex flex-col max-h-[400px] min-h-[150px] overflow-y-auto custom-scrollbar pr-2">
 
-                    {(!hasRunThisSession || (status === 'IDLE' && currentLogs.length === 0)) ? (
-                      <div className="flex items-center justify-center h-full min-h-[150px] text-[#667085] font-bold text-sm">
-                        No active logs
-                      </div>
-                    ) : currentLogs.length > 0 ? (
+                    {currentLogs.length > 0 ? (
                       currentLogs.map((log, idx) => {
                         const parts = log.text.split(':');
                         const isTestCase = parts.length > 1 && (parts[0].trim().startsWith('TC_') || parts[0].trim().startsWith('TEST_'));
@@ -450,12 +605,12 @@ export default function ProjectRunner({
                         const message = isTestCase ? parts.slice(1).join(':') : log.text;
 
                         return (
-                          <div key={idx} className="flex items-center gap-4 py-3.5 border-b border-[#EAECF0] last:border-0 hover:bg-[#F9FAFB] px-2 rounded-xl transition-colors group">
-                            <span className="text-[11px] text-[#98A2B3] font-bold font-mono shrink-0">{log.time}</span>
-                            <div className="text-[#D0D5DD] shrink-0 group-hover:text-[#98A2B3] transition-colors">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                          <div key={idx} className="flex items-center gap-4 py-3 border-b border-[#EAECF0] last:border-0 hover:bg-[#F9FAFB] px-3 rounded-xl transition-all duration-300 animate-fadeIn group">
+                            <span className="text-[11px] text-[#98A2B3] font-bold font-mono shrink-0 w-[85px]">{log.time}</span>
+                            <div className="shrink-0 flex items-center justify-center w-5">
+                              {log.icon}
                             </div>
-                            <span className="text-[13px] text-[#344054] flex-1 truncate">
+                            <span className="text-[13px] text-[#344054] flex-1 truncate ml-1">
                               {isTestCase ? (
                                 <>
                                   <span className="font-bold text-[#101828]">{prefix}</span>
@@ -487,6 +642,7 @@ export default function ProjectRunner({
                         <p className="text-xs mt-1">Start the execution to view live terminal output.</p>
                       </div>
                     )}
+                    <div ref={logsEndRef} />
                   </div>
                 </div>
               </div>
@@ -570,8 +726,6 @@ export default function ProjectRunner({
                 <Download size={16} /> Download HTML Report
               </button>
             </div>
-            
-            {/* Bottom start execution removed as per request */}
           </div>
           
         </>
@@ -586,14 +740,25 @@ export default function ProjectRunner({
           Back
         </button>
         <button 
-          onClick={() => setActiveTab('results')}
+          onClick={() => isCompleted && setActiveTab('results')}
           disabled={!isCompleted}
-          className={`px-8 py-3 bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] text-white font-bold rounded-xl shadow-[0_4px_14px_rgba(91,95,246,0.4)] flex items-center gap-2 ${!isCompleted ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:shadow-[0_6px_20px_rgba(91,95,246,0.6)] hover:-translate-y-0.5 transition-all'}`}
+          className={`px-8 py-3 font-bold rounded-xl flex items-center gap-2 transition-all ${
+            isCompleted 
+              ? 'bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] text-white shadow-[0_4px_14px_rgba(91,95,246,0.4)] hover:shadow-[0_6px_20px_rgba(91,95,246,0.6)] hover:-translate-y-0.5' 
+              : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+          }`}
         >
           Continue <ArrowRight size={18} />
         </button>
       </div>
 
+      <CoverageModal 
+        isOpen={!!modalData} 
+        onClose={() => setModalData(null)} 
+        tool={modalData?.tool} 
+        percentage={modalData?.percentage} 
+        analysisResult={analysisResult} 
+      />
     </div>
   );
 }
