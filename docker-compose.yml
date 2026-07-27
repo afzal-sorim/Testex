@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Database
   db:
     image: postgres:15
     container_name: prova_db
@@ -12,6 +13,68 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Redis Broker
+  redis:
+    image: redis:7-alpine
+    container_name: app-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-backend
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/provadb
+      - REDIS_URL=redis://redis:6379/0
+      - AI_PROVIDER=${AI_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL_NAME=${GROQ_MODEL_NAME}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL_NAME=${GEMINI_MODEL_NAME}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CORS_ALLOWED_ORIGINS_REGEX=${CORS_ALLOWED_ORIGINS_REGEX}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  # Celery Background Worker
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-celery
+    command: celery -A app.celery_app.celery_app worker --loglevel=info -P solo --concurrency=1
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/provadb
+      - REDIS_URL=redis://redis:6379/0
+      - AI_PROVIDER=${AI_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL_NAME=${GROQ_MODEL_NAME}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL_NAME=${GEMINI_MODEL_NAME}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  # Playwright Remote Execution Service
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    container_name: app-playwright
+    ports:
+      - "3000:3000"
     restart: unless-stopped
 
 volumes:
