@@ -512,16 +512,45 @@ class SeleniumService:
         json_report = report_dir / "report.json"
         env = os.environ.copy()
 
+        # Port reachability check & scan
+        def _port_is_open(p: int) -> bool:
+            import socket as _sock
+            try:
+                with _sock.create_connection(("127.0.0.1", p), timeout=1):
+                    return True
+            except OSError:
+                return False
+
         # Try to get the running app URL from project_runner_service
         try:
             from app.services.project_runner_service import project_runner_service
             runner_status = project_runner_service.runs.get(repo_name, {})
-            if runner_status.get("status") in ("RUNNING", "RUNNING_API"):
-                port = runner_status.get("port")
-                if port and not base_url:
-                    base_url = f"http://127.0.0.1:{port}"
+            port = runner_status.get("port")
+            if port and not base_url:
+                base_url = f"http://127.0.0.1:{port}"
         except Exception:
             pass
+
+        # Verify base_url reachability
+        import re as _re
+        local_match = _re.search(r"127\.0\.0\.1:(\d+)", base_url or "")
+        prop_port = int(local_match.group(1)) if local_match else None
+        if prop_port and not _port_is_open(prop_port):
+            active_p = None
+            for candidate in [8081, 8080, 8082, 8083, 3000, 5173]:
+                if _port_is_open(candidate):
+                    active_p = candidate
+                    break
+            if active_p:
+                base_url = f"http://127.0.0.1:{active_p}"
+
+        if not base_url:
+            for candidate in [8081, 8080, 8082, 8083, 3000, 5173]:
+                if _port_is_open(candidate):
+                    base_url = f"http://127.0.0.1:{candidate}"
+                    break
+            if not base_url:
+                base_url = "http://127.0.0.1:8081"
 
         if base_url:
             env["SELENIUM_BASE_URL"] = base_url

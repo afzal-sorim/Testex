@@ -216,12 +216,13 @@ export default function FunctionalTesting({ setActiveTab, repoUrl, result, workf
           </div>
         </div>
 
+         
         {/* Execution Time Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-[#EAECF0] flex flex-col">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-[#EAECF0] flex flex-col overflow-hidden">
           <h2 className="text-md font-bold text-[#101828] mb-8">Execution Time by Module</h2>
-          
-          <div className="flex-1 flex items-end gap-6 relative pt-8 pb-6 border-b border-[#EAECF0] px-2 h-[300px]">
-            
+         
+          <div className="flex-1 relative pt-8 pb-6 border-b border-[#EAECF0] h-[300px]">
+           
             {(() => {
               if (!testResults || testResults.length === 0) {
                 return (
@@ -230,64 +231,66 @@ export default function FunctionalTesting({ setActiveTab, repoUrl, result, workf
                   </div>
                 );
               }
-
+ 
               const maxRaw = Math.max(...testResults.map(r => r.rawTime || 0), 100);
-              // Calculate a clean scale maximum (e.g. 500ms, 1000ms, 2000ms, etc.)
               let maxScale = 100;
               while (maxScale < maxRaw) {
                 if (maxScale < 1000) maxScale += 100;
                 else if (maxScale < 5000) maxScale += 500;
                 else maxScale += 1000;
               }
-              
+             
               return (
                 <>
-                  {/* Y Axis labels */}
-                  <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-[#98A2B3] font-bold py-1 pr-4 border-r border-[#EAECF0] h-[calc(100%-24px)] min-w-[45px] text-right bg-white z-20">
+                  {/* Y Axis labels - Fixed */}
+                  <div className="absolute left-0 top-8 bottom-6 flex flex-col justify-between text-[10px] text-[#98A2B3] font-bold py-1 pr-4 border-r border-[#EAECF0] min-w-[45px] text-right bg-white z-20">
                     <span>{(maxScale / 1000).toFixed(1)}s</span>
                     <span>{(maxScale * 0.75 / 1000).toFixed(1)}s</span>
                     <span>{(maxScale * 0.5 / 1000).toFixed(1)}s</span>
                     <span>{(maxScale * 0.25 / 1000).toFixed(1)}s</span>
                     <span>0.0s</span>
                   </div>
-
-                  {/* Grid lines */}
-                  <div className="absolute left-[45px] right-0 top-1 h-px bg-[#F2F4F7] z-0"></div>
-                  <div className="absolute left-[45px] right-0 top-[calc(25%+1px)] h-px bg-[#F2F4F7] z-0"></div>
-                  <div className="absolute left-[45px] right-0 top-[calc(50%+1px)] h-px bg-[#F2F4F7] z-0"></div>
-                  <div className="absolute left-[45px] right-0 top-[calc(75%+1px)] h-px bg-[#F2F4F7] z-0"></div>
-
-                  {/* Bars */}
-                  {testResults.map((result, idx) => {
-                    const heightPercent = Math.max(Math.min(((result.rawTime || 0) / maxScale) * 100, 100), 2);
-                    const isFailed = result.status === 'Failed';
-                    const gradientClass = isFailed ? 'from-rose-500 to-rose-400' : 'from-[#5B5FF6] to-[#8184fa]';
-                    const shadowClass = isFailed ? 'shadow-[0_8px_20px_rgba(244,63,94,0.3)]' : 'shadow-[0_8px_20px_rgba(91,95,246,0.3)]';
-                    
-                    const shortLabel = result.module.split(' ').slice(0, 2).join(' ') || `Test ${idx+1}`;
-
-                    return (
-                      <div key={result.id || idx} className={`flex-1 flex flex-col items-center gap-4 relative z-10 ${idx === 0 ? 'ml-[45px]' : ''} group h-full justify-end`}>
-                        
-                        <div 
-                          className={`w-full max-w-[64px] bg-gradient-to-t ${gradientClass} rounded-t-xl transition-all duration-500 ${shadowClass} relative cursor-pointer hover:opacity-90 group-hover:scale-y-[1.02] transform origin-bottom`} 
-                          style={{ height: `${heightPercent}%` }}
-                        >
-                          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#101828] text-white text-xs font-bold px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none drop-shadow-lg after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[5px] after:border-transparent after:border-t-[#101828]">
-                            {result.time}
+ 
+                  {/* Grid lines - Fixed */}
+                  <div className="absolute left-[45px] right-0 top-9 h-px bg-[#F2F4F7] z-0"></div>
+                  <div className="absolute left-[45px] right-0 top-[calc(25%+24px)] h-px bg-[#F2F4F7] z-0"></div>
+                  <div className="absolute left-[45px] right-0 top-[calc(50%+16px)] h-px bg-[#F2F4F7] z-0"></div>
+                  <div className="absolute left-[45px] right-0 top-[calc(75%+8px)] h-px bg-[#F2F4F7] z-0"></div>
+ 
+                  {/* Bars - Scrollable */}
+                  <div className="absolute left-[45px] right-0 top-8 bottom-0 overflow-x-auto overflow-y-hidden flex items-end gap-6 px-4 z-10 custom-scrollbar pb-6">
+                    {testResults.map((result, idx) => {
+                      const heightPercent = Math.max(Math.min(((result.rawTime || 0) / maxScale) * 100, 100), 2);
+                      const isFailed = result.status === 'Failed';
+                      const gradientClass = isFailed ? 'from-rose-500 to-rose-400' : 'from-[#5B5FF6] to-[#8184fa]';
+                      const shadowClass = isFailed ? 'shadow-[0_8px_20px_rgba(244,63,94,0.3)]' : 'shadow-[0_8px_20px_rgba(91,95,246,0.3)]';
+                     
+                      const shortLabel = result.module.split(' ').slice(0, 2).join(' ') || `Test ${idx+1}`;
+ 
+                      return (
+                        <div key={result.id || idx} className="flex-1 flex flex-col items-center gap-4 relative group h-full justify-end min-w-[60px]">
+                         
+                          <div
+                            className={`w-full max-w-[48px] bg-gradient-to-t ${gradientClass} rounded-t-xl transition-all duration-500 ${shadowClass} relative cursor-pointer hover:opacity-90 group-hover:scale-y-[1.02] transform origin-bottom`}
+                            style={{ height: `${heightPercent}%` }}
+                          >
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#101828] text-white text-xs font-bold px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none drop-shadow-lg after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[5px] after:border-transparent after:border-t-[#101828]">
+                              {result.time}
+                            </div>
                           </div>
+                          <span className="text-[10px] font-bold text-[#667085] text-center w-full truncate px-1 uppercase tracking-wider" title={result.module}>{shortLabel}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#667085] text-center w-full truncate px-1 uppercase tracking-wider" title={result.module}>{shortLabel}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </>
               );
             })()}
-            
+           
           </div>
         </div>
       </div>
+ 
 
       {/* Test Execution Results Table */}
       <div className="bg-white rounded-3xl p-0 shadow-sm border border-[#EAECF0] overflow-hidden">
@@ -411,7 +414,7 @@ export default function FunctionalTesting({ setActiveTab, repoUrl, result, workf
               </div>
               <h3 className="text-sm font-bold text-[#101828] mb-2">UI Test Cases Summary</h3>
               <p className="text-xs text-[#667085] leading-relaxed">
-                Comprehensive listing of all generated UI test cases. AI-analyzed from repository source code.
+                Comprehensive listing of all generated UI test cases. Analyzed from repository source code.
               </p>
             </div>
           </div>
@@ -434,7 +437,7 @@ export default function FunctionalTesting({ setActiveTab, repoUrl, result, workf
               </div>
               <h3 className="text-sm font-bold text-[#101828] mb-2">API Test Cases Summary</h3>
               <p className="text-xs text-[#667085] leading-relaxed">
-                Comprehensive listing of all generated API test cases. AI-analyzed from repository controllers.
+                Comprehensive listing of all generated API test cases. Analyzed from repository controllers.
               </p>
             </div>
           </div>

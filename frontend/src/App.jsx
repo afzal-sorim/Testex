@@ -149,6 +149,15 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const mainScrollRef = React.useRef(null);
+
+  useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const [darkMode, setDarkMode] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
@@ -545,7 +554,7 @@ export default function App() {
         </div>
       </aside>
 {/* ── MAIN CONTENT PANE ── */}
-      <main className="flex-1 h-full overflow-y-auto bg-[#F7F8FC] flex flex-col relative">
+      <main ref={mainScrollRef} className="flex-1 h-full overflow-y-auto bg-[#F7F8FC] flex flex-col relative">
         {/* Top Header / Actions */}
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#EAECF0] bg-white sticky top-0 z-10">
           <div className="flex-1"></div>

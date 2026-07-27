@@ -2731,6 +2731,93 @@ function downloadHTML() {
   URL.revokeObjectURL(url);
 }
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    function isHyphen(text) {
+        if (!text) return true;
+        text = text.replace(/[\n\r]+/g, '').trim();
+        return text === "-" || text === "" || text === "N/A" || text === "None";
+    }
+ 
+    // 1. Tech Pills & Arch Cards
+    document.querySelectorAll(".tech-pill, .arch-card, .support-channel").forEach(el => {
+        if (isHyphen(el.textContent)) el.style.display = "none";
+    });
+ 
+    // 2. Table Rows
+    document.querySelectorAll("tr").forEach(row => {
+        const cells = Array.from(row.querySelectorAll("td"));
+        if (cells.length > 1) {
+            const dataCells = cells.slice(1);
+            if (dataCells.length > 0 && dataCells.every(cell => isHyphen(cell.textContent))) {
+                row.style.display = "none";
+            }
+        }
+    });
+ 
+    // 3. Grids & Fields
+    document.querySelectorAll(".er-field, .class-field, .scope-item, .use-case-step, li, .file-row").forEach(el => {
+        const fname = el.querySelector(".fname");
+        if (fname) {
+            if (isHyphen(fname.textContent)) el.style.display = "none";
+        } else {
+            let clone = el.cloneNode(true);
+            clone.querySelectorAll('.check-mark, .badge').forEach(e => e.remove());
+            let text = clone.textContent.replace(/^[-\d.\u2022\s]+/, '').trim();
+            if (isHyphen(text) || isHyphen(clone.textContent)) {
+                el.style.display = "none";
+            }
+        }
+    });
+ 
+    // 4. Cards and Sections
+    const cardSelectors = [
+        { sel: ".module-card", titleSel: "h4" },
+        { sel: ".use-case-card", titleSel: ".use-case-title" },
+        { sel: ".er-table", titleSel: ".er-table-head" },
+        { sel: ".class-card", titleSel: ".class-card-head" },
+        { sel: ".arch-section", titleSel: ".arch-section-label" },
+        { sel: ".biz-rule", titleSel: ".biz-rule-id" },
+        { sel: ".app-screen", titleSel: ".app-screen-name" },
+        { sel: ".integration-card", titleSel: "h4" },
+        { sel: ".callout", titleSel: "strong" },
+        { sel: ".file-group", titleSel: ".file-group-title" }
+    ];
+ 
+    cardSelectors.forEach(({sel, titleSel}) => {
+        document.querySelectorAll(sel).forEach(card => {
+            const title = card.querySelector(titleSel);
+            if (title) {
+                let titleText = title.childNodes[0] ? title.childNodes[0].nodeValue : title.textContent;
+                if (titleText && isHyphen(titleText)) {
+                    card.style.display = "none";
+                }
+            }
+        });
+    });
+ 
+    // 5. Sequence diagram rows
+    document.querySelectorAll(".seq-row").forEach(row => {
+        const msgs = Array.from(row.querySelectorAll(".seq-msg"));
+        if (msgs.length > 0 && msgs.every(msg => isHyphen(msg.textContent))) {
+            row.style.display = "none";
+        }
+    });
+ 
+    // 6. Hide wrappers if they have no visible children
+    document.querySelectorAll("ul, ol, .tech-pills, .class-grid, .er-grid, .scope-grid, .module-grid, .arch-row, .file-group").forEach(wrapper => {
+        let hasVisible = false;
+        // Don't count the title itself as a valid child if it's the only thing left
+        Array.from(wrapper.children).forEach(child => {
+            if (window.getComputedStyle(child).display !== "none" && !child.classList.contains('file-group-title')) {
+                hasVisible = true;
+            }
+        });
+        if (!hasVisible) wrapper.style.display = "none";
+    });
+});
+</script>
 </body>
 </html>
+ 
  

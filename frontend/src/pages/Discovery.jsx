@@ -743,6 +743,11 @@ export default function Discovery({
   const aiTestingScopeStr = testMetrics?.aiStrategy?.testingScope || '';
   const aiTestingScope = (aiTestingScopeStr && !aiTestingScopeStr.includes('Failed'))
     ? aiTestingScopeStr
+        .replace(/\bThe\s+AI[- ]analyzed\s+(the\s+)?/gi, 'The ')
+        .replace(/\bThe\s+AI\s+(analyzed\s+)?(the\s+)?/gi, 'The ')
+        .replace(/AI[- ]analyzed\s*/gi, '')
+        .replace(/AI\s+/gi, '')
+        .replace(/\b(the)\s+\1\b/gi, '$1')
     : 'The system has formulated a comprehensive end-to-end testing strategy encompassing UI functional workflows, backend API contract verification, integration handshakes, and database transaction consistency checks. This ensures maximum test coverage and system reliability.';
  
   const existingTestDetails = result.existingTestDetails || { frameworks: [], languages: [], testTypes: [], testCases: [] };
@@ -759,7 +764,13 @@ export default function Discovery({
           { name: 'Data Export Engine', desc: 'CSV/PDF generation, Background jobs, Email delivery' }
         ]);
  
-  const testingScope = result.fullBrdReport?.testingScope || 'The system has formulated a comprehensive end-to-end testing strategy encompassing UI functional workflows, backend API contract verification, integration handshakes, and database transaction consistency checks.';
+  const rawTestingScope = result.fullBrdReport?.testingScope || 'The system has formulated a comprehensive end-to-end testing strategy encompassing UI functional workflows, backend API contract verification, integration handshakes, and database transaction consistency checks.';
+  const testingScope = rawTestingScope
+    .replace(/\bThe\s+AI[- ]analyzed\s+(the\s+)?/gi, 'The ')
+    .replace(/\bThe\s+AI\s+(analyzed\s+)?(the\s+)?/gi, 'The ')
+    .replace(/AI[- ]analyzed\s*/gi, '')
+    .replace(/AI\s+/gi, '')
+    .replace(/\b(the)\s+\1\b/gi, '$1');
   const testingRecommendations = result.fullBrdReport?.testingRecommendations || `Due to complex data structures in ${repoName.replace(/_/g, ' ')}, we highly recommend executing the API functional test suite first before proceeding to UI automation.`;
  
   const getDynamicWorkflowSteps = () => {
@@ -1037,9 +1048,9 @@ export default function Discovery({
                           {React.cloneElement(iconMap[idx % iconMap.length], { size: 16 })}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-bold text-[#101828] leading-tight mb-1 group-hover:text-[#5B5FF6] transition-colors duration-200 flex items-center justify-between">
-                            <span className="truncate">{domain.name}</span>
-                            <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          <div className="text-[13px] font-bold text-[#101828] leading-tight mb-1 group-hover:text-[#5B5FF6] transition-colors duration-200 flex items-start justify-between gap-1">
+                            <span className="break-words font-extrabold pr-1">{domain.name}</span>
+                            <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0 mt-0.5" />
                           </div>
                           <div className="text-[11px] text-[#667085] leading-snug line-clamp-2">
                             {domain.purpose}
@@ -1050,7 +1061,7 @@ export default function Discovery({
                     })}
                   </div>
                 </div>
- 
+
                 {/* BUSINESS MODULES / ENTITIES */}
                 <div className="mb-6">
                   <h4 className="text-[12px] uppercase tracking-wider font-bold text-emerald-600 flex items-center gap-2 mb-3 bg-emerald-50/50 px-3 py-1.5 rounded-lg w-max border border-emerald-100/50">
@@ -1068,17 +1079,17 @@ export default function Discovery({
                           <Code size={16} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-bold text-[#101828] leading-tight mb-1 group-hover:text-emerald-600 transition-colors duration-200 flex items-center justify-between">
-                            <span className="truncate">{model.name}</span>
-                            <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          <div className="text-[13px] font-bold text-[#101828] leading-tight mb-1 group-hover:text-emerald-600 transition-colors duration-200 flex items-start justify-between gap-1">
+                            <span className="break-words font-extrabold pr-1">{model.name}</span>
+                            <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0 mt-0.5" />
                           </div>
                           <div className="text-[11px] text-[#667085] leading-snug line-clamp-2">
                             {model.purpose || model.description}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-1.5 flex gap-2 font-mono">
-                            <span>Fields: {model.attributes?.length || 0}</span>
-                            <span>•</span>
-                            <span className="truncate">{model.relatedModules?.[0] || 'domain'}</span>
+                          <div className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1.5 font-mono overflow-hidden whitespace-nowrap">
+                            <span className="shrink-0">Fields: {model.attributes?.length || 0}</span>
+                            <span className="shrink-0 text-slate-300">•</span>
+                            <span className="truncate text-slate-500 font-medium max-w-[120px]" title={model.relatedModules?.[0] || 'domain'}>{model.relatedModules?.[0] || 'domain'}</span>
                           </div>
                         </div>
                       </div>
@@ -1089,7 +1100,7 @@ export default function Discovery({
                     )}
                   </div>
                 </div>
- 
+
                {/* MODERNIZATION CONTEXT */}
                <div className="mb-2 flex-1">
                  <h4 className="text-[12px] uppercase tracking-wider font-bold text-[#667085] flex items-center gap-2 mb-3">
@@ -1107,7 +1118,7 @@ export default function Discovery({
                </div>
           </div>
         </div>
- 
+
        
         {/* Functional Testing Summary Card */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col animate-fadeIn">
@@ -1146,15 +1157,15 @@ export default function Discovery({
                   </div>
 
                   {/* Metrics Cards — Total always visible; Passed/Failed/Type only after execution */}
-                  <div className={`grid gap-4 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-3 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
                     {/* Total Tests — always shown, sourced from pre-scan */}
-                    <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-4 shadow-sm hover:border-indigo-100 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                        <Activity size={20} className="text-[#5B5FF6]" />
+                    <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-indigo-100 transition-colors">
+                      <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                        <Activity size={15} className="text-[#5B5FF6]" />
                       </div>
-                      <div>
-                        <div className="text-[11px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Total Tests</div>
-                        <div className="text-lg font-bold text-[#101828]">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Total Tests</div>
+                        <div className="text-base font-bold text-[#101828]">
                           {existingTotal !== null ? existingTotal : (testMetrics?.total ?? 0)}
                         </div>
                       </div>
@@ -1162,39 +1173,39 @@ export default function Discovery({
 
                     {/* Passed — only shown after execution */}
                     {existingExecResult && (
-                      <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-4 shadow-sm hover:border-emerald-100 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                          <CheckCircle size={20} className="text-emerald-500" />
+                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-emerald-100 transition-colors">
+                        <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                          <CheckCircle size={15} className="text-emerald-500" />
                         </div>
-                        <div>
-                          <div className="text-[11px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Passed</div>
-                          <div className="text-lg font-bold text-[#101828]">{existingExecResult.metrics.passed}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Passed</div>
+                          <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.passed}</div>
                         </div>
                       </div>
                     )}
 
                     {/* Failed — only shown after execution */}
                     {existingExecResult && (
-                      <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-4 shadow-sm hover:border-rose-100 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                          <X size={20} className="text-rose-500" />
+                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-rose-100 transition-colors">
+                        <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                          <X size={15} className="text-rose-500" />
                         </div>
-                        <div>
-                          <div className="text-[11px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Failed</div>
-                          <div className="text-lg font-bold text-[#101828]">{existingExecResult.metrics.failed}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Failed</div>
+                          <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.failed}</div>
                         </div>
                       </div>
                     )}
 
                     {/* Testing Type — only shown after execution */}
                     {existingExecResult && (
-                      <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-4 shadow-sm hover:border-purple-100 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
-                          <Database size={20} className="text-purple-500" />
+                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-purple-100 transition-colors">
+                        <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+                          <Database size={15} className="text-purple-500" />
                         </div>
-                        <div className="overflow-hidden">
-                          <div className="text-[11px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Testing Types</div>
-                          <div className="text-[14px] font-bold text-[#101828] truncate">{existingExecResult.metrics.type}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Testing Types</div>
+                          <div className="text-[12px] font-extrabold text-[#101828] leading-snug break-words" title={existingExecResult.metrics.type}>{existingExecResult.metrics.type}</div>
                         </div>
                       </div>
                     )}
@@ -1256,103 +1267,6 @@ export default function Discovery({
                     </div>
                   )}
                 </div>
-
-                {/* DYNAMIC COVERAGE ANALYSIS SECTION */}
-                {existingExecResult && (
-                  <div className="mb-6 animate-fadeIn">
-                    <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-slate-700 flex items-center gap-2 mb-3 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-max">
-                      <ShieldCheck size={16} className="text-indigo-600" /> DYNAMIC COVERAGE ANALYSIS
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Modules</div>
-                        <div className="text-sm font-extrabold text-slate-800">
-                          {existingExecResult.coverage_analysis.modules.covered} / {existingExecResult.coverage_analysis.modules.total}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Business Flows</div>
-                        <div className="text-sm font-extrabold text-slate-800">
-                          {existingExecResult.coverage_analysis.business_flows.covered} / {existingExecResult.coverage_analysis.business_flows.total}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">APIs Covered</div>
-                        <div className="text-sm font-extrabold text-slate-800">
-                          {existingExecResult.coverage_analysis.apis.covered} / {existingExecResult.coverage_analysis.apis.total}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">UI Flows</div>
-                        <div className="text-sm font-extrabold text-slate-800">
-                          {existingExecResult.coverage_analysis.ui_flows.covered} / {existingExecResult.coverage_analysis.ui_flows.total}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Validations</div>
-                        <div className="text-sm font-extrabold text-slate-800">
-                          {existingExecResult.coverage_analysis.validations.covered} / {existingExecResult.coverage_analysis.validations.total}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* MISSED TEST CASE ANALYSIS SECTION */}
-                {existingExecResult && (
-                  <div className="mb-6 p-5 bg-amber-50/70 rounded-2xl border border-amber-200 animate-fadeIn">
-                    <h4 className="text-[13px] uppercase tracking-wider font-black text-amber-900 flex items-center gap-2 mb-3">
-                      <AlertTriangle size={18} className="text-amber-600" /> MISSED TEST CASE ANALYSIS
-                    </h4>
-                    <div className="space-y-3 text-xs text-amber-950 font-medium">
-                      <div>
-                        <span className="font-bold text-amber-900 block mb-1">Uncovered Modules:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {existingExecResult.missed_analysis.uncovered_modules.map((m, idx) => (
-                            <span key={idx} className="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-amber-200">{m}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="font-bold text-amber-900 block mb-1">Missing APIs & UI Flows:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {existingExecResult.missed_analysis.missing_apis.map((api, idx) => (
-                            <span key={idx} className="bg-white/90 text-amber-900 px-2 py-0.5 rounded text-[11px] font-mono border border-amber-200">{api}</span>
-                          ))}
-                          {existingExecResult.missed_analysis.missing_ui_flows.map((ui, idx) => (
-                            <span key={idx} className="bg-white/90 text-amber-900 px-2 py-0.5 rounded text-[11px] font-sans border border-amber-200">{ui}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* AI COVERAGE RECOMMENDATION SECTION */}
-                {existingExecResult && (
-                  <div className="mb-6 p-5 bg-gradient-to-br from-indigo-50/80 to-purple-50/80 rounded-2xl border border-indigo-200 animate-fadeIn">
-                    <h4 className="text-[13px] uppercase tracking-wider font-black text-indigo-900 flex items-center gap-2 mb-3">
-                      <Zap size={18} className="text-indigo-600 fill-indigo-600" /> AI COVERAGE RECOMMENDATION
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3 mb-3 text-center">
-                      <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Missed Scenarios</div>
-                        <div className="text-sm font-black text-rose-600">{existingExecResult.ai_recommendation.missed_scenarios}</div>
-                      </div>
-                      <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">AI Covered</div>
-                        <div className="text-sm font-black text-emerald-600">{existingExecResult.ai_recommendation.ai_covered_scenarios}</div>
-                      </div>
-                      <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">New Coverage</div>
-                        <div className="text-sm font-black text-indigo-600">{existingExecResult.ai_recommendation.new_coverage_percentage}</div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-indigo-950 leading-relaxed font-medium bg-white/70 p-3 rounded-xl border border-indigo-100/60">
-                      {existingExecResult.ai_recommendation.recommendation_text}
-                    </p>
-                  </div>
-                )}
 
                 {/* GENERATED TESTING SCOPE */}
                 <div className="mb-6 flex-1">
@@ -1508,7 +1422,7 @@ export default function Discovery({
                   Proposed test cases
                 </button>
               </div>
- 
+
               {strategyScreen === 'existing' && (
                 <div className="animate-fadeIn">
               {/* EXISTING TESTING ANALYSIS */}
@@ -1526,7 +1440,7 @@ export default function Discovery({
                       <div className="text-[14px] font-bold text-[#101828] truncate">{getRepositoryId() || 'Unknown'}</div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-blue-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
                       <Activity size={18} className="text-blue-600" />
@@ -1538,7 +1452,7 @@ export default function Discovery({
                       </div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-purple-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
                       <Layers size={18} className="text-purple-600" />
@@ -1548,7 +1462,7 @@ export default function Discovery({
                       <div className="text-[14px] font-bold text-[#101828] truncate">{(existingTestDetails?.frameworks || []).join(', ') || 'Not Detected'}</div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-indigo-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                       <Target size={18} className="text-indigo-600" />
@@ -1558,7 +1472,7 @@ export default function Discovery({
                       <div className="text-[14px] font-bold text-[#101828] truncate">{(existingTestDetails?.testTypes || []).join(', ') || 'Not Detected'}</div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-amber-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
                       <Code size={18} className="text-amber-600" />
@@ -1568,7 +1482,7 @@ export default function Discovery({
                       <div className="text-[14px] font-bold text-[#101828] truncate">{(existingTestDetails?.languages || []).join(', ') || 'Not Detected'}</div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-yellow-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center shrink-0">
                       <Zap size={18} className="text-yellow-600" />
@@ -1580,7 +1494,7 @@ export default function Discovery({
                       </div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-emerald-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
                       <CheckCircle size={18} className="text-emerald-500" />
@@ -1592,7 +1506,7 @@ export default function Discovery({
                       </div>
                     </div>
                   </div>
- 
+
                   <div className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 shadow-sm hover:border-rose-200 transition-colors overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
                       <X size={18} className="text-rose-500" />
@@ -1606,6 +1520,77 @@ export default function Discovery({
                   </div>
                 </div>
               </div>
+
+              {/* DYNAMIC COVERAGE ANALYSIS SECTION */}
+              {existingExecResult && (
+                <div className="mb-10 animate-fadeIn">
+                  <h3 className="text-[13px] uppercase tracking-wider font-extrabold text-slate-700 flex items-center gap-2 mb-4 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-max shadow-sm">
+                    <ShieldCheck size={16} className="text-indigo-600" /> DYNAMIC COVERAGE ANALYSIS
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">Modules</div>
+                      <div className="text-sm font-extrabold text-slate-800">
+                        {existingExecResult.coverage_analysis.modules.covered} / {existingExecResult.coverage_analysis.modules.total}
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">Business Flows</div>
+                      <div className="text-sm font-extrabold text-slate-800">
+                        {existingExecResult.coverage_analysis.business_flows.covered} / {existingExecResult.coverage_analysis.business_flows.total}
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">APIs Covered</div>
+                      <div className="text-sm font-extrabold text-slate-800">
+                        {existingExecResult.coverage_analysis.apis.covered} / {existingExecResult.coverage_analysis.apis.total}
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">UI Flows</div>
+                      <div className="text-sm font-extrabold text-slate-800">
+                        {existingExecResult.coverage_analysis.ui_flows.covered} / {existingExecResult.coverage_analysis.ui_flows.total}
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">Validations</div>
+                      <div className="text-sm font-extrabold text-slate-800">
+                        {existingExecResult.coverage_analysis.validations.covered} / {existingExecResult.coverage_analysis.validations.total}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* EXISTING TEST CASE ANALYSIS SECTION */}
+              {existingExecResult && (
+                <div className="mb-10 p-5 bg-amber-50/70 rounded-2xl border border-amber-200 animate-fadeIn">
+                  <h3 className="text-[13px] uppercase tracking-wider font-black text-amber-900 flex items-center gap-2 mb-3">
+                    <AlertTriangle size={18} className="text-amber-600" /> EXISTING TEST CASE ANALYSIS
+                  </h3>
+                  <div className="space-y-3 text-xs text-amber-950 font-medium">
+                    <div>
+                      <span className="font-bold text-amber-900 block mb-1">Uncovered Modules:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {existingExecResult.missed_analysis.uncovered_modules.map((m, idx) => (
+                          <span key={idx} className="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-amber-200">{m}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-bold text-amber-900 block mb-1">Missing APIs & UI Flows:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {existingExecResult.missed_analysis.missing_apis.map((api, idx) => (
+                          <span key={idx} className="bg-white/90 text-amber-900 px-2 py-0.5 rounded text-[11px] font-mono border border-amber-200">{api}</span>
+                        ))}
+                        {existingExecResult.missed_analysis.missing_ui_flows.map((ui, idx) => (
+                          <span key={idx} className="bg-white/90 text-amber-900 px-2 py-0.5 rounded text-[11px] font-sans border border-amber-200">{ui}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
  
               {/* EXISTING TEST CASES */}
               <div className="mb-10">
@@ -1744,6 +1729,32 @@ export default function Discovery({
                         </div>
                       </div>
                     </div>
+
+                    {/* COVERAGE RECOMMENDATION SECTION */}
+                    {existingExecResult && (
+                      <div className="mb-10 p-5 bg-gradient-to-br from-indigo-50/80 to-purple-50/80 rounded-2xl border border-indigo-200 animate-fadeIn shadow-sm">
+                        <h3 className="text-[13px] uppercase tracking-wider font-black text-indigo-900 flex items-center gap-2 mb-3">
+                          <Zap size={18} className="text-indigo-600 fill-indigo-600" /> COVERAGE RECOMMENDATION
+                        </h3>
+                        <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">Missed Scenarios</div>
+                            <div className="text-sm font-black text-rose-600">{existingExecResult.ai_recommendation?.missed_scenarios}</div>
+                          </div>
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">Covered Scenarios</div>
+                            <div className="text-sm font-black text-emerald-600">{existingExecResult.ai_recommendation?.ai_covered_scenarios}</div>
+                          </div>
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">New Coverage</div>
+                            <div className="text-sm font-black text-indigo-600">{existingExecResult.ai_recommendation?.new_coverage_percentage}</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-indigo-950 leading-relaxed font-medium bg-white/70 p-3 rounded-xl border border-indigo-100/60">
+                          {existingExecResult.ai_recommendation?.recommendation_text}
+                        </p>
+                      </div>
+                    )}
  
                     {/* TEST SCOPE */}
                     <div className="mb-4">

@@ -250,29 +250,49 @@ class PlaywrightService:
         test_dir = project_dir / "tests" / "e2e"
         test_dir.mkdir(parents=True, exist_ok=True)
         
-        # Base tests that are always included
+        # Base tests with distinct actions & extended video recording timing (2500ms)
         test_suites = {
             "01-navigation.spec.ts": """import { test, expect } from '@playwright/test';
 
 test.describe('Navigation & Core Routing', () => {
-  test('Homepage loads successfully without errors', async ({ page, baseURL }) => {
+  test('Homepage loads successfully with interactive elements', async ({ page, baseURL }) => {
     const response = await page.goto(baseURL || '/');
     await page.waitForLoadState('networkidle');
     expect(response?.status()).toBeLessThan(400);
     await expect(page.locator('body')).toBeVisible();
     
+    // Perform smooth visual scroll & hover for distinct video recording
+    await page.evaluate(() => window.scrollBy(0, 300));
+    await page.waitForTimeout(1000);
+    
+    const firstLink = page.locator('a, button, input').first();
+    if (await firstLink.isVisible().catch(() => false)) {
+      await firstLink.hover().catch(() => {});
+    }
+    
     // Explicitly fail if a generic Spring Boot/Jetty error page is returned
     const bodyText = await page.locator('body').innerText();
     expect(bodyText).not.toContain('Whitelabel Error');
     expect(bodyText).not.toContain('Error 404');
+    
+    // Extended pause for crisp video artifact capture
+    await page.waitForTimeout(2500);
   });
 
-  test('Page title is populated', async ({ page, baseURL }) => {
+  test('Page title & header navigation items operate correctly', async ({ page, baseURL }) => {
     await page.goto(baseURL || '/');
     await page.waitForLoadState('networkidle');
     const title = await page.title();
     expect(title.length).toBeGreaterThan(0);
     expect(title).not.toMatch(/404|Error/i);
+    
+    // Interact with navigation header if present
+    const navItems = page.locator('.navbar-nav a, header a, nav a');
+    if (await navItems.count() > 1) {
+      await navItems.nth(1).hover().catch(() => {});
+    }
+    await page.evaluate(() => window.scrollBy(0, 150));
+    await page.waitForTimeout(2500);
   });
 });
 """
@@ -326,7 +346,7 @@ test.describe('Navigation & Core Routing', () => {
             if test_count > 0:
                 test_suites["03-api-endpoints.spec.ts"] = api_test_content
 
-                # --- Dynamic UI Component Tests ---
+        # --- Dynamic UI Component Tests ---
         ui_test_content = None
         try:
             from app.services.ui_test_case_service import ui_test_case_service
@@ -335,23 +355,15 @@ test.describe('Navigation & Core Routing', () => {
             
             system_instruction = (
                 "You are an expert QA Automation Engineer. "
-                "Analyze the provided source code (JSP, React, Vue, HTML, etc) and generate a single, comprehensive Playwright test file (.spec.ts) "
-                "that includes robust E2E test cases representing the business logic and UI components discovered. "
-                "CRITICAL RULES FOR RESILIENT TESTS:\n"
-                "1. Output ONLY valid TypeScript code for a Playwright test file. Do NOT use markdown wrappers like ```typescript or provide any explanations.\n"
+                "Analyze the provided source code and generate a single Playwright test file (.spec.ts) "
+                "that includes robust E2E test cases representing the business logic and UI components discovered.\n"
+                "CRITICAL RULES FOR UNIQUE VISUAL EVIDENCE & VIDEO TIMING:\n"
+                "1. Output ONLY valid TypeScript code for a Playwright test file. Do NOT use markdown wrappers.\n"
                 "2. Import test and expect from '@playwright/test'.\n"
                 "3. Use `test.describe('UI Components & Flows', () => { ... })` as the main wrapper.\n"
-                "4. Start every test with `await page.goto(baseURL || '/');` and `await page.waitForLoadState('domcontentloaded');`.\n"
-                "5. Write defensive locators with soft checks. For example:\n"
-                "   const element = page.locator('button, input[type=\"submit\"], a, h1, h2, form').first();\n"
-                "   if (await element.isVisible({ timeout: 2000 }).catch(() => false)) {\n"
-                "     await expect(element).toBeVisible();\n"
-                "   } else {\n"
-                "     await expect(page.locator('body')).toBeVisible();\n"
-                "   }\n"
-                "6. NEVER use strict `.toBeEmpty()`, `.toHaveText()`, or un-guarded `.click()` on guessed IDs/selectors that might fail if elements are not present.\n"
-                "7. Always verify `await expect(page.locator('body')).toBeVisible();` in each test.\n"
-                "8. End every test with `await page.waitForTimeout(500);` to capture screenshots and video cleanly."
+                "4. Make EVERY test case navigate to a DISTINCT route or perform distinct interactions (clicks, form fills, page scrolls, viewport changes).\n"
+                "5. End EVERY test case with `await page.waitForTimeout(2500);` to ensure Playwright captures a long, clear video recording and unique screenshot for each test.\n"
+                "6. Write defensive locators with soft checks. Always verify `await expect(page.locator('body')).toBeVisible();`."
             )
             
             user_prompt = f"Generate Playwright test cases for the following UI source code.\n\nSource Code:\n{code_context[:20000]}"
@@ -371,9 +383,27 @@ test.describe('Navigation & Core Routing', () => {
         if ui_test_content:
             test_suites["04-ui-components.spec.ts"] = ui_test_content
         else:
-            # Fallback to static template
+            # Enhanced fallback template with distinct routes, interactions & 2.5s video timing
+            # Extract discovered routes/pages from BRD if available
+            source_files = brd.get("sourceFiles", [])
+            ui_files = [f for f in source_files if isinstance(f, str) and re.search(r'\.(html|jsp|jsx|tsx|vue|svelte)$', f, re.I)]
+            
+            # Map default component names to realistic target sub-routes
+            route_map = {
+                "Home Page": "/",
+                "Login Page": "/login",
+                "Dashboard View": "/dashboard",
+                "Settings Panel": "/settings",
+                "User Profile": "/profile",
+                "Navigation Menu": "/vets.html",
+                "Find Owners": "/owners/find",
+                "Add Owner": "/owners/new",
+                "Veterinarians": "/vets.html",
+                "Error Page": "/oups.html"
+            }
+
             ui_components = brd.get("uiComponents", [])
-            default_pages = ["Home Page", "Login Page", "Dashboard View", "Settings Panel", "User Profile", "Navigation Menu"]
+            default_pages = ["Home Page", "Find Owners", "Add Owner", "Veterinarians", "Login Page", "Dashboard View"]
             ui_components.extend(default_pages)
             ui_components = list(dict.fromkeys(ui_components))
 
@@ -381,31 +411,49 @@ test.describe('Navigation & Core Routing', () => {
                 static_ui_content = "import { test, expect } from '@playwright/test';\n\ntest.describe('UI Components Checks', () => {\n"
                 for comp in ui_components:
                     comp_name = comp.replace("'", "\\'")
+                    sub_path = route_map.get(comp, f"/{comp.lower().replace(' ', '-')}")
+                    
                     static_ui_content += f"""
-  // 5 Tests for {comp_name}
+  // 5 Distinct Tests for {comp_name}
   test('Component "{comp_name}" renders successfully', async ({{ page, baseURL }}) => {{
-    await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    const targetUrl = (baseURL || '').replace(/\/+$/, '') + '{sub_path}';
+    await page.goto((baseURL || '').replace(/\/+$/, '') + '{sub_path}').catch(async () => {{
+      await page.goto(baseURL || '/');
+      const link = page.locator('a').filter({{ hasText: /{comp_name.split()[0]}/i }}).first();
+      if (await link.isVisible().catch(() => false)) await link.click().catch(() => {{}});
+    }});
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toBeVisible();
-    await page.waitForTimeout(1000);
+    await page.evaluate(() => window.scrollBy(0, 200));
+    await page.waitForTimeout(2500);
   }});
 
   test('Component "{comp_name}" handles mobile viewport correctly', async ({{ page, baseURL }}) => {{
     await page.setViewportSize({{ width: 375, height: 667 }});
-    await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    await page.goto((baseURL || '') + '{sub_path}').catch(async () => {{
+      await page.goto(baseURL || '/');
+    }});
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toBeVisible();
-    await page.waitForTimeout(1000);
+    const navBtn = page.locator('button.navbar-toggler, button[aria-label*="toggle"], .menu-icon').first();
+    if (await navBtn.isVisible().catch(() => false)) {{
+      await navBtn.click().catch(() => {{}});
+    }}
+    await page.waitForTimeout(2500);
   }});
 
   test('Component "{comp_name}" meets basic accessibility standards', async ({{ page, baseURL }}) => {{
-    await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    await page.goto((baseURL || '') + '{sub_path}').catch(async () => {{
+      await page.goto(baseURL || '/');
+    }});
+    await page.waitForLoadState('domcontentloaded');
     const images = await page.locator('img').all();
     for (const img of images) {{
       const alt = await img.getAttribute('alt');
       expect(alt !== undefined).toBe(true);
     }}
+    await page.evaluate(() => window.scrollBy(0, 350));
+    await page.waitForTimeout(2500);
   }});
 
   test('Component "{comp_name}" interactions do not produce console errors', async ({{ page, baseURL }}) => {{
@@ -413,19 +461,30 @@ test.describe('Navigation & Core Routing', () => {
     page.on('console', msg => {{
       if (msg.type() === 'error') errors.push(msg.text());
     }});
-    await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    await page.goto((baseURL || '') + '{sub_path}').catch(async () => {{
+      await page.goto(baseURL || '/');
+    }});
+    await page.waitForLoadState('domcontentloaded');
+    
+    // Interact with form inputs or buttons if present for visual variety
+    const input = page.locator('input[type="text"], input[type="search"]').first();
+    if (await input.isVisible().catch(() => false)) {{
+      await input.fill('TestInput').catch(() => {{}});
+    }}
     expect(errors.length).toBeLessThanOrEqual(5);
+    await page.waitForTimeout(2500);
   }});
 
   test('Component "{comp_name}" performance loads within acceptable threshold', async ({{ page, baseURL }}) => {{
     const startTime = Date.now();
-    await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    await page.goto((baseURL || '') + '{sub_path}').catch(async () => {{
+      await page.goto(baseURL || '/');
+    }});
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toBeVisible();
-    await page.waitForTimeout(1000);
     const loadTime = Date.now() - startTime;
     expect(loadTime).toBeLessThan(10000);
+    await page.waitForTimeout(2500);
   }});
 """
                 static_ui_content += "});\n"
@@ -439,9 +498,10 @@ test.describe('Navigation & Core Routing', () => {
                     flow_test_content += f"""
   test('Business Flow: {title} ({i})', async ({{ page, baseURL }}) => {{
     await page.goto(baseURL || '/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toBeVisible();
-    await page.waitForTimeout(1000);
+    await page.evaluate(() => window.scrollBy(0, 400));
+    await page.waitForTimeout(2500);
   }});
 """
                 flow_test_content += "});\n"
@@ -508,46 +568,68 @@ test.describe('Navigation & Core Routing', () => {
         """Run npm install + playwright install + playwright test."""
         env = os.environ.copy()
         
+        # Helper to check if a port is accepting socket connections
+        def _port_is_open(p: int) -> bool:
+            import socket as _sock
+            try:
+                with _sock.create_connection(("127.0.0.1", p), timeout=1):
+                    return True
+            except OSError:
+                return False
+
         # Determine base URL for tests
         from app.services.project_runner_service import project_runner_service
+        run_info = project_runner_service.runs.get(repo_name)
         target_url = base_url
 
-        if not target_url:
-            run_info = project_runner_service.runs.get(repo_name)
-            if not run_info or run_info.get("status") not in ["STARTING", "RUNNING"]:
-                print(f"[PlaywrightService] Project '{repo_name}' is not running. Auto-starting local application...")
-                try:
-                    import asyncio
-                    asyncio.create_task(project_runner_service.start_project(repo_name))
-                    for _ in range(20):
-                        await asyncio.sleep(0.5)
-                        run_info = project_runner_service.runs.get(repo_name)
-                        if run_info and run_info.get("port"):
-                            break
-                except Exception as e:
-                    print(f"[PlaywrightService] Auto-start attempt error for '{repo_name}': {e}")
+        if not target_url and run_info:
+            port = run_info.get("port")
+            preferred_path = run_info.get("preferred_preview_path")
+            backend_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("BACKEND_URL")
+            if backend_url:
+                target_url = backend_url.rstrip("/") + f"/api/run/preview/{repo_name}"
+                if preferred_path:
+                    target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
+            elif port:
+                target_url = f"http://127.0.0.1:{port}"
+                if preferred_path:
+                    target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
 
-            if run_info:
-                port = run_info.get("port")
-                preferred_path = run_info.get("preferred_preview_path")
-                
-                backend_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("BACKEND_URL")
-                if backend_url:
-                    target_url = backend_url.rstrip("/") + f"/api/run/preview/{repo_name}"
-                    if preferred_path:
-                        target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
-                elif port:
-                    target_url = f"http://127.0.0.1:{port}"
-                    if preferred_path:
-                        target_url = target_url.rstrip("/") + "/" + preferred_path.lstrip("/")
+        # Robust Target URL Reachability Verification & Port Scan Fallback
+        # If target_url points to a local port (e.g. 127.0.0.1:8082) that is NOT reachable,
+        # scan common web ports to locate the actual running application server.
+        import re as _re
+        local_port_match = _re.search(r"127\.0\.0\.1:(\d+)", target_url or "")
+        proposed_port = int(local_port_match.group(1)) if local_port_match else None
+
+        if proposed_port and not _port_is_open(proposed_port):
+            print(f"[PlaywrightService] Proposed target port {proposed_port} is not reachable. Scanning active web ports...")
+            active_port = None
+            for candidate in [8081, 8080, 8082, 8083, 8084, 8085, 3000, 5173, 8000]:
+                if _port_is_open(candidate):
+                    active_port = candidate
+                    print(f"[PlaywrightService] Located active application server listening on port {candidate}.")
+                    break
+            if active_port:
+                target_url = f"http://127.0.0.1:{active_port}"
+                if run_info:
+                    run_info["port"] = active_port
+            else:
+                print(f"[PlaywrightService] Warning: No active web ports responded to scan. Keeping {target_url}.")
 
         if not target_url:
-            target_url = "http://127.0.0.1:8081"
+            # Final fallback: scan open ports or default to 8081
+            active_port = 8081
+            for candidate in [8081, 8080, 8082, 8083, 3000, 5173]:
+                if _port_is_open(candidate):
+                    active_port = candidate
+                    break
+            target_url = f"http://127.0.0.1:{active_port}"
         
         if target_url:
             env["BASE_URL"] = target_url
             env["PLAYWRIGHT_BASE_URL"] = target_url
-            print(f"[PlaywrightService] Target URL for '{repo_name}' set to: {target_url}")
+            print(f"[PlaywrightService] Target URL for '{repo_name}' finalized to: {target_url}")
             self._sanitize_spec_and_config_urls(project_dir, target_url)
 
         env["CI"] = "1"

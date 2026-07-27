@@ -417,10 +417,88 @@ export default function ProjectRunner({
   const isRunning = status === 'RUNNING';
   const isCompleted = status === 'SUCCESS' || status === 'FAILED' || status === 'PASSED' || status === 'COMPLETED';
 
-  // Dynamic statistics
-  const livePassed = currentLogs.filter(l => l.status === 'Passed').length;
-  const liveFailed = currentLogs.filter(l => l.status === 'Failed').length;
-  const liveSkipped = currentLogs.filter(l => l.status === 'Skipped').length;
+  // ─────────────────────────────────────────────────────────────
+  // ENTERPRISE TEST LIFECYCLE STATE MANAGEMENT
+  // Lifecycle: Queued → Running → Retrying (optional) → Passed / Failed / Skipped
+  //
+  // Rules:
+  //  1. A log line tagged 'Failed' during RUNNING is NOT a final failure.
+  //     It is reclassified as 'Retrying' unless a subsequent 'Passed' line
+  //     with the same test name is absent (all retries exhausted).
+  //  2. Passed/Failed/Skipped counters are ONLY updated from terminal-state logs.
+  //  3. A test is terminal when:
+  //     - status='Passed' appears after all retry attempts, OR
+  //     - A 'Failed' appears with no subsequent recovery within the log stream, OR
+  //     - status='Skipped'
+  // ─────────────────────────────────────────────────────────────
+
+  // Build a per-test terminal state map from live logs during RUNNING
+  const terminalStateMap = React.useMemo(() => {
+    if (!isRunning) return {};
+    const map = {}; // testKey -> 'Passed' | 'FinalFailed' | 'Skipped' | 'Retrying'
+    currentLogs.forEach((log, idx) => {
+      if (!log.status || log.status === 'Info' || log.status === 'Running' || log.status === 'Remediating') return;
+      const key = log.text.substring(0, 60);
+      if (log.status === 'Passed') {
+        map[key] = 'Passed';
+      } else if (log.status === 'Skipped') {
+        map[key] = 'Skipped';
+      } else if (log.status === 'Failed') {
+        // Check if a later log shows this test passed (retry succeeded)
+        const laterPassed = currentLogs.slice(idx + 1).some(
+          l => l.status === 'Passed' && l.text.substring(0, 60) === key
+        );
+        if (laterPassed) {
+          map[key] = 'Passed'; // retry succeeded — count as Passed
+        } else {
+          // Check if there's a retry indicator after this failure
+          const laterRetry = currentLogs.slice(idx + 1).some(
+            l => l.status === 'Retrying' || (l.text && l.text.toLowerCase().includes('retry'))
+          );
+          if (laterRetry && map[key] !== 'Passed') {
+            map[key] = 'Retrying'; // in-flight retry — don't count yet
+          } else {
+            // No later retry or pass found — treat as final failure only if
+            // this is the LAST occurrence of this key
+            const isLastOccurrence = !currentLogs.slice(idx + 1).some(
+              l => l.text.substring(0, 60) === key
+            );
+            if (isLastOccurrence) {
+              map[key] = 'FinalFailed';
+            } else {
+              map[key] = 'Retrying';
+            }
+          }
+        }
+      } else if (log.status === 'Retrying') {
+        if (map[key] !== 'Passed') map[key] = 'Retrying';
+      }
+    });
+    return map;
+  }, [currentLogs, isRunning]);
+
+  // Detect if any test is currently retrying
+  const activeRetryLog = React.useMemo(() => {
+    if (!isRunning) return null;
+    return [...currentLogs].reverse().find(l =>
+      l.status === 'Retrying' ||
+      (l.text && (l.text.toLowerCase().includes('retry') || l.text.toLowerCase().includes('[ai auto-remediation]')))
+    );
+  }, [currentLogs, isRunning]);
+
+  const retryAttemptInfo = React.useMemo(() => {
+    if (!activeRetryLog) return null;
+    const match = activeRetryLog.text.match(/attempt\s*(\d+)\s*[/of]+\s*(\d+)/i);
+    if (match) return { current: match[1], total: match[2] };
+    return { current: '?', total: '3' };
+  }, [activeRetryLog]);
+
+  // Terminal-state counters (enterprise standard)
+  const terminalValues = Object.values(terminalStateMap);
+  const livePassed  = isRunning ? terminalValues.filter(v => v === 'Passed').length      : 0;
+  const liveFailed  = isRunning ? terminalValues.filter(v => v === 'FinalFailed').length  : 0;
+  const liveSkipped = isRunning ? terminalValues.filter(v => v === 'Skipped').length      : 0;
+  const liveRunning = isRunning ? terminalValues.filter(v => v === 'Retrying').length     : 0;
 
   const resolvedTotal = testData && typeof testData.totalTests === 'number' ? testData.totalTests : 0;
   
@@ -428,11 +506,11 @@ export default function ProjectRunner({
     ? (testData?.totalTests || testData?.modules?.length || 0)
     : resolvedTotal;
 
-  const passed = isCompleted ? (testData?.passedTests || 0) : livePassed;
-  const failed = isCompleted ? (testData?.failedTests || 0) : liveFailed;
+  const passed  = isCompleted ? (testData?.passedTests  || 0) : livePassed;
+  const failed  = isCompleted ? (testData?.failedTests  || 0) : liveFailed;
   const skipped = isCompleted ? (testData?.skippedTests || 0) : liveSkipped;
   
-  const executed = passed + failed + skipped;
+  const executed  = passed + failed + skipped;
   const remaining = Math.max(0, total - executed);
 
   // Compute dynamic progress percentage
@@ -441,22 +519,25 @@ export default function ProjectRunner({
     ? 100
     : (total > 0 && completedCount > 0 ? Math.min(99, Math.floor((completedCount / total) * 100)) : (isRunning ? Math.min(95, Math.max(0, elapsedSeconds * 2)) : 0));
 
-  // Current Test Name & File
+  // Current Test Name & File — with retry enrichment
   let currentTestName = "Initializing...";
+  let currentTestStatus = isRunning ? 'Running' : (isCompleted ? 'Completed' : 'Idle');
   let currentFile = isSelenium ? "selenium.config.js" : "playwright.config.ts";
   if (isRunning) {
-    const reversedLogs = [...currentLogs].reverse();
-    const testLog = reversedLogs.find(l => l.text.includes('›') || l.text.match(/\.spec\.[jt]s/));
-    if (testLog) {
-      currentTestName = testLog.text.split('›').pop().trim();
-      const fileMatch = testLog.text.match(/([a-zA-Z0-9_-]+\.spec\.[jt]s)/);
-      if (fileMatch) {
-        currentFile = fileMatch[1];
-      }
+    if (activeRetryLog) {
+      currentTestStatus = 'Retrying';
+      const reasonMatch = activeRetryLog.text.match(/(?:locator|timeout|element|error)[^.!]*/i);
+      currentTestName = reasonMatch ? reasonMatch[0].trim() : (activeRetryLog.text.substring(0, 60) + '...');
     } else {
-      const activeLog = reversedLogs.find(l => !l.text.includes('Running') && !l.text.includes('Initializing'));
-      if (activeLog) {
-          currentTestName = activeLog.text.substring(0, 50) + (activeLog.text.length > 50 ? '...' : '');
+      const reversedLogs = [...currentLogs].reverse();
+      const testLog = reversedLogs.find(l => l.text.includes('›') || l.text.match(/\.spec\.[jt]s/));
+      if (testLog) {
+        currentTestName = testLog.text.split('›').pop().trim();
+        const fileMatch = testLog.text.match(/([a-zA-Z0-9_-]+\.spec\.[jt]s)/);
+        if (fileMatch) currentFile = fileMatch[1];
+      } else {
+        const activeLog = reversedLogs.find(l => !l.text.includes('Running') && !l.text.includes('Initializing'));
+        if (activeLog) currentTestName = activeLog.text.substring(0, 50) + (activeLog.text.length > 50 ? '...' : '');
       }
     }
   } else if (isCompleted) {
@@ -691,22 +772,6 @@ export default function ProjectRunner({
                 <p className="text-xs text-[#667085] mt-1 font-medium">PROVA is running your tests. Sit back and relax!</p>
               </div>
               <div className="flex items-center gap-3">
-                {(isRunning || elapsedSeconds > 0 || testData?.executionTime) && (
-                  <div className="relative group flex items-center justify-center">
-                    {isRunning && <div className="absolute inset-0 rounded-full blur-[6px] opacity-50 bg-gradient-to-r from-[#5B5FF6] to-[#00D4FF] animate-pulse"></div>}
-                    <div className={`relative px-4 py-1.5 rounded-full flex items-center gap-2.5 shadow-sm border ${isRunning ? 'bg-white border-[#5B5FF6]/30' : 'bg-slate-50 border-slate-200'}`}>
-                      <div className="relative flex items-center justify-center">
-                         <svg className={`w-3.5 h-3.5 ${isRunning ? 'text-[#5B5FF6] animate-[spin_4s_linear_infinite]' : 'text-slate-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                           <circle cx="12" cy="12" r="10"></circle>
-                           <polyline points="12 6 12 12 16 14"></polyline>
-                         </svg>
-                      </div>
-                      <span className={`text-[13px] font-black tracking-widest font-mono ${isRunning ? 'bg-clip-text text-transparent bg-gradient-to-r from-[#5B5FF6] to-[#00D4FF]' : 'text-slate-500'}`}>
-                        {formatTime(testData?.executionTime || elapsedSeconds)}
-                      </span>
-                    </div>
-                  </div>
-                )}
                 <div className={`px-3 py-1 ${isRunning ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'} rounded-full flex items-center gap-2`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
                   <span className={`text-[10px] font-bold uppercase ${isRunning ? 'text-emerald-700' : 'text-slate-500'}`}>{isRunning ? 'Live' : status}</span>
@@ -763,14 +828,28 @@ export default function ProjectRunner({
                 </div>
               </div>
              
-              <div className="border border-[#EAECF0] rounded-2xl p-4 flex items-center justify-center gap-4 shadow-sm bg-white">
-                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
-                  <XCircle size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#667085] uppercase">Failed</p>
-                  <p className="text-2xl font-black text-[#101828]">{failed}</p>
-                </div>
+              <div className="border border-[#EAECF0] rounded-2xl p-4 flex items-center justify-center gap-4 shadow-sm bg-white relative overflow-hidden">
+                {isRunning && liveRunning > 0 ? (
+                  <>
+                    <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+                      <RefreshCcw size={18} className="animate-spin" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase">Retrying</p>
+                      <p className="text-2xl font-black text-[#101828]">{liveRunning}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                      <XCircle size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#667085] uppercase">Failed</p>
+                      <p className="text-2xl font-black text-[#101828]">{failed}</p>
+                    </div>
+                  </>
+                )}
               </div>
  
               <div className="border border-[#EAECF0] rounded-2xl p-4 flex items-center justify-center gap-4 shadow-sm bg-white">
@@ -799,15 +878,37 @@ export default function ProjectRunner({
             <div className="bg-white rounded-2xl p-4 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#EAECF0] shadow-sm text-[#101828]">
                <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold text-[#667085] uppercase mb-1 flex items-center gap-2">
-                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                     <span className={`w-2 h-2 rounded-full ${currentTestStatus === 'Retrying' ? 'bg-amber-500' : 'bg-blue-500'} animate-pulse`}></span>
                      Current Execution
                   </p>
                   <p className="text-sm font-mono font-bold truncate" title={currentTestName}>
                     {currentTestName}
                   </p>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">
-                    {currentFile}
-                  </p>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {currentTestStatus === 'Retrying' && retryAttemptInfo ? (
+                      <>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          Retrying — Attempt {retryAttemptInfo.current} / {retryAttemptInfo.total}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {activeRetryLog?.text?.substring(0, 50)}...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          currentTestStatus === 'Completed' ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' :
+                          currentTestStatus === 'Running'  ? 'bg-blue-50 border border-blue-200 text-blue-700' :
+                          'bg-slate-50 border border-slate-200 text-slate-600'
+                        }`}>
+                          {currentTestStatus === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>}
+                          {currentTestStatus}
+                        </span>
+                        <p className="text-xs text-slate-500 font-mono truncate">{currentFile}</p>
+                      </>
+                    )}
+                  </div>
                </div>
                <div className="flex items-center gap-6 shrink-0 border-l border-[#EAECF0] pl-6">
                   <div>
@@ -852,15 +953,29 @@ export default function ProjectRunner({
                             {log.status === 'Passed' && (
                               <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">Passed</span>
                             )}
-                            {log.status === 'Failed' && (
-                              <span className="px-2.5 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full">Failed</span>
-                            )}
+                             {log.status === 'Failed' && (() => {
+                               // Check if this failure was later recovered by a retry success
+                               const logIdx = currentLogs.indexOf(log);
+                               const laterPassed = currentLogs.slice(logIdx + 1).some(
+                                 l => l.status === 'Passed' && l.text.substring(0, 60) === log.text.substring(0, 60)
+                               );
+                               return laterPassed ? (
+                                 <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full">Retry Triggered</span>
+                               ) : (
+                                 <span className="px-2.5 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full">Final Fail</span>
+                               );
+                             })()}
                             {log.status === 'Skipped' && (
                               <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full">Skipped</span>
                             )}
-                            {log.status === 'Remediating' && (
-                              <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full animate-pulse">Self-Healing</span>
-                            )}
+                             {(log.status === 'Retrying') && (
+                               <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full animate-pulse flex items-center gap-1">
+                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span> Retrying
+                               </span>
+                             )}
+                             {log.status === 'Remediating' && (
+                               <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full animate-pulse">Self-Healing</span>
+                             )}
                             {log.status === 'Running' && (
                               <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span> Running

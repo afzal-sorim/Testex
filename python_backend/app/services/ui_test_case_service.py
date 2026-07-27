@@ -271,7 +271,9 @@ class UITestCaseService:
         system_instruction = (
             "You are an expert QA Automation Architect. "
             "Analyze the provided source code (JSP, React, Vue, HTML, etc) and generate comprehensive, project-specific UI Functional Test Cases. "
-            "For every page detected, you MUST generate business test scenarios automatically (e.g. 'Register new customer'). "
+            "Never generate a fixed or top-level count. "
+            "For EVERY route, form, input, button, table, dialog, and validation rule discovered, expand every executable behavior into a distinct test scenario "
+            "(Positive Workflow, Negative Input Validation, Boundary Parameter Limits, Required Field Constraints, State Transitions, Navigation, CRUD Operations, Error Handling). "
             "You MUST accurately detect specific elements: Routes, Forms, Input fields, Buttons, Links, Tables, Dropdowns, Checkboxes, Radio buttons, Date pickers, File uploads. "
             "Provide realistic, step-by-step test execution steps representing a business workflow. "
             "Format the output strictly as a JSON object. Do not use markdown wrappers like ```json. "

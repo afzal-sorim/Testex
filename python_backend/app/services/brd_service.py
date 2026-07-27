@@ -59,7 +59,7 @@ class BrdService:
                 "build_tool":   analysis.build_tool or "Unknown",
                 "database":     analysis.database_type or "Unknown",
                 "is_java":      (analysis.project_type or "").lower() == "java",
-                "stored_brd":   analysis.full_brd_report or {},
+                "stored_brd":   json.loads(analysis.full_brd_report) if isinstance(analysis.full_brd_report, str) else (analysis.full_brd_report or {}),
             }
         finally:
             db.close()
@@ -533,7 +533,7 @@ class BrdService:
         if isinstance(value, (list, dict)):
             return json.dumps(value)
         return str(value).strip() or fallback
- 
+
     @staticmethod
     def _list_item(lst, idx, key=None, fallback="-") -> str:
         """Get the idx-th item from a list (0-based), optionally extracting a key."""
@@ -679,15 +679,24 @@ class BrdService:
         for i in range(3):
             cap = caps[i] if i < len(caps) else {}
             n = i + 1
-            tv[f"CAPABILITY_{n}_NAME"]     = s(cap.get("name")) if cap else ""
-            tv[f"CAPABILITY_{n}_OVERVIEW"] = s(cap.get("overview")) if cap else ""
-            tv[f"CAPABILITY_{n}_VALUE"]    = s(cap.get("value")) if cap else ""
-            feats = cap.get("features", []) if cap else []
-            for j in range(4):
-                tv[f"CAP{n}_FEATURE_{j+1}"] = li(feats, j)
-            procs = cap.get("processes", []) if cap else []
-            for j in range(3):
-                tv[f"CAP{n}_PROCESS_{j+1}"] = li(procs, j)
+            if isinstance(cap, dict):
+                tv[f"CAPABILITY_{n}_NAME"]     = s(cap.get("name")) if cap else ""
+                tv[f"CAPABILITY_{n}_OVERVIEW"] = s(cap.get("overview")) if cap else ""
+                tv[f"CAPABILITY_{n}_VALUE"]    = s(cap.get("value")) if cap else ""
+                feats = cap.get("features", []) if cap else []
+                for j in range(4):
+                    tv[f"CAP{n}_FEATURE_{j+1}"] = li(feats, j)
+                procs = cap.get("processes", []) if cap else []
+                for j in range(3):
+                    tv[f"CAP{n}_PROCESS_{j+1}"] = li(procs, j)
+            else:
+                tv[f"CAPABILITY_{n}_NAME"]     = s(cap)
+                tv[f"CAPABILITY_{n}_OVERVIEW"] = ""
+                tv[f"CAPABILITY_{n}_VALUE"]    = ""
+                for j in range(4):
+                    tv[f"CAP{n}_FEATURE_{j+1}"] = "-"
+                for j in range(3):
+                    tv[f"CAP{n}_PROCESS_{j+1}"] = "-"
  
         # ── ARCHITECTURE ────────────────────────────────────────────────────
         tv["ACTOR_1"] = li(brd.get("actors") or [], 0)
@@ -989,7 +998,7 @@ class BrdService:
         tv["NFR_PERF_USERS_NOTE"]       = _nfr(perf, "usersNote")
         tv["NFR_PERF_BATCH"]            = _nfr(perf, "batch", "batchTime")
         tv["NFR_PERF_BATCH_NOTE"]       = _nfr(perf, "batchNote")
- 
+
         def _nfr_list(obj, count):
             if isinstance(obj, list):
                 return [s(item) for item in obj[:count]]
@@ -1102,7 +1111,7 @@ class BrdService:
  
         # ── SECURITY CHECKLIST ──────────────────────────────────────────────
         sec_checks = brd.get("securityChecklist") or []
-        for i in range(5):
+        for i in range(8):
             tv[f"SEC_CHECK_{i+1}"] = li(sec_checks, i, "check")
  
         # ── PII ANALYSIS ─────────────────────────────────────────────────────
@@ -1171,7 +1180,7 @@ class BrdService:
         # ── PHY METRICS ──────────────────────────────────────────────────────
         # Map languages for rows 1, 2, and 3
         languages = brd.get("languages") or brd.get("staticCodeAnalysis", {}).get("breakdown") or []
-        
+       
         # Intelligent fallback for missing language breakdown data
         if not languages or (len(languages) == 1 and languages[0].get("loc") == "N/A"):
             languages = [
@@ -1179,10 +1188,10 @@ class BrdService:
                 {"name": "YAML", "phyFiles": "2", "usedFiles": "2", "orphFiles": "0", "phyLoc": "60", "usedLoc": "60", "orphLoc": "0"},
                 {"name": "KTS", "phyFiles": "2", "usedFiles": "2", "orphFiles": "0", "phyLoc": "60", "usedLoc": "60", "orphLoc": "0"}
             ]
-        
+       
         tot_phy_files = tot_used_files = tot_orph_files = 0
         tot_phy_loc = tot_used_loc = tot_orph_loc = 0
-
+ 
         for i in range(3):
             n = i + 1
             lang = languages[i] if i < len(languages) else {}
@@ -1194,7 +1203,7 @@ class BrdService:
                 tv[f"PHY_LOC_{n}"]    = s(lang.get("phyLoc") or lang.get("loc"), "-")
                 tv[f"USED_LOC_{n}"]   = s(lang.get("usedLoc"), "-")
                 tv[f"ORPH_LOC_{n}"]   = s(lang.get("orphLoc"), "-")
-                
+               
                 # Acc totals
                 try: tot_phy_files += int(lang.get("phyFiles") or lang.get("programs") or 0)
                 except: pass
@@ -1212,14 +1221,14 @@ class BrdService:
                 tv[f"PROG_TYPE_{n}"]  = s(lang)
                 tv[f"PHY_FILES_{n}"] = tv[f"USED_FILES_{n}"] = tv[f"ORPH_FILES_{n}"] = "-"
                 tv[f"PHY_LOC_{n}"] = tv[f"USED_LOC_{n}"] = tv[f"ORPH_LOC_{n}"] = "-"
-
+ 
         static_ca = brd.get("staticCodeAnalysis", {})
         def _get_metric(ca, k1, k2, tot):
             val = ca.get(k1) or brd.get(k2)
             if not val or val == "0" or val == 0:
                 return str(tot) if tot > 0 else None
             return val
-
+ 
         tv["TOTAL_PHY"]      = s(_get_metric(static_ca, "totalPhyFiles", "totalPrograms", tot_phy_files) or "10")
         tv["TOTAL_USED"]     = s(_get_metric(static_ca, "totalUsedFiles", "totalUsedFiles", tot_used_files) or "10")
         tv["TOTAL_ORPH"]     = s(_get_metric(static_ca, "totalOrphFiles", "totalOrphanFiles", tot_orph_files) or "0")
@@ -1273,5 +1282,6 @@ class BrdService:
  
  
 brd_service = BrdService()
+ 
  
  

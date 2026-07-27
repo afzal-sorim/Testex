@@ -791,23 +791,35 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
     if (analysisResult?.fullBrdReport) {
       const brd = analysisResult.fullBrdReport;
       if (brd.sourceFiles && brd.sourceFiles.length > 0) {
-        uiFiles = brd.sourceFiles.filter(f => typeof f === 'string' && f.match(/\.(html|jsx|tsx|vue|jsp|css)$/i)).map(f => ({ name: f.split('/').pop() || f.split('\\').pop(), path: f }));
+        uiFiles = brd.sourceFiles.filter(f => typeof f === 'string' && (f.match(/\.(html|jsx|tsx|vue|jsp|css)$/i) || f.match(/View|Form|Page|Template/i))).map(f => ({ name: f.split('/').pop() || f.split('\\').pop(), path: f }));
         apiFiles = brd.sourceFiles.filter(f => typeof f === 'string' && f.match(/controller|api|route|handler/i) && f.match(/\.(java|py|js|ts|go|cs)$/i)).map(f => ({ name: f.split('/').pop() || f.split('\\').pop(), path: f }));
       }
      
       let baseModules = [];
-      if (brd.businessDomains && brd.businessDomains.length > 0) {
-        baseModules = brd.businessDomains.map(dom => {
-          const dName = typeof dom === 'string' ? dom : dom.name;
-          const cleanName = dName.replace(/ Management| Processing| Administration| Services| System/g, '');
+      if (uiFiles.length > 0) {
+        baseModules = uiFiles.map(f => ({
+          name: f.name.replace(/\.[^/.]+$/, ""),
+          features: [
+            'Primary Page & View Rendering (Positive)',
+            'Form Input Processing & Parameter Rules (Validation)',
+            'Mandatory Field & Boundary Limit Verification (Boundary)',
+            'Interactive State Transitions & Navigation (State)',
+            'Error Banner & Exception Handling (Negative)',
+            'Record Update & Data Persistence Workflow (CRUD)'
+          ]
+        }));
+      } else if (brd.bizComponents && brd.bizComponents.length > 0) {
+        baseModules = brd.bizComponents.map(c => {
+          const cName = typeof c === 'string' ? c : (c.name || c.title || 'Component');
           return {
-            name: dName,
+            name: cName,
             features: [
-              `Validate ${cleanName} creation & primary workflow execution`,
-              `Validate ${cleanName} record listing, search, & detail view`,
-              `Validate ${cleanName} form inputs & required parameter constraints`,
-              `Check ${cleanName} state transitions & domain invariants`,
-              `Handle ${cleanName} exception scenarios & permission boundaries`
+              `Validate ${cName} view rendering & component initialization`,
+              `Validate ${cName} user form inputs & required parameter constraints`,
+              `Check ${cName} boundary character limits & null rules`,
+              `Validate ${cName} navigation & routing transitions`,
+              `Check ${cName} state updates & data persistence`,
+              `Handle ${cName} exception errors & state boundary limits`
             ]
           };
         });
@@ -815,20 +827,66 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         baseModules = brd.businessModels.map(m => {
           const mName = typeof m === 'string' ? m : m.name;
           return {
-            name: `${mName} Domain`,
+            name: `${mName} View & Form`,
             features: [
-              `Validate ${mName} entity creation & field initialization`,
-              `Validate ${mName} attribute updates & state persistence`,
-              `Validate ${mName} query, search, & relational mapping`,
-              `Check ${mName} input constraint verification & null checks`,
-              `Handle ${mName} state transition errors & edge cases`
+              `Validate ${mName} page rendering & layout initialization (Positive)`,
+              `Validate ${mName} form input parameter constraints (Validation)`,
+              `Check ${mName} boundary character limits & null rules (Boundary)`,
+              `Validate ${mName} record query, search, & navigation (Navigation)`,
+              `Check ${mName} attribute updates & state persistence (CRUD)`,
+              `Handle ${mName} exception errors & state boundary limits (Negative)`
             ]
           };
+        });
+      } else if (apiFiles.length > 0) {
+        baseModules = apiFiles.map(f => {
+          const cName = f.name.replace(/\.[^/.]+$/, "").replace(/Controller|Route|Api|Handler/gi, "");
+          return {
+            name: `${cName} View & Interface`,
+            features: [
+              `Validate ${cName} view rendering & primary workflow execution`,
+              `Validate ${cName} form inputs & required parameter constraints`,
+              `Check ${cName} boundary character limits & null rules`,
+              `Validate ${cName} record query, search, & navigation`,
+              `Check ${cName} attribute updates & state persistence`,
+              `Handle ${cName} exception errors & state boundary limits`
+            ]
+          };
+        });
+      } else if (brd.businessDomains && brd.businessDomains.length > 0) {
+        baseModules = brd.businessDomains.flatMap(dom => {
+          const dName = typeof dom === 'string' ? dom : dom.name;
+          const cleanName = dName.replace(/ Management| Processing| Administration| Services| System/g, '');
+          return [
+            {
+              name: `${cleanName} Primary View`,
+              features: [
+                `Validate ${cleanName} creation & primary workflow execution (Positive)`,
+                `Validate ${cleanName} search, filtering, & record detail navigation (Navigation)`,
+                `Validate ${cleanName} form inputs & required parameter constraints (Validation)`,
+                `Validate ${cleanName} empty required fields & boundary inputs (Boundary)`
+              ]
+            },
+            {
+              name: `${cleanName} Workflows & Actions`,
+              features: [
+                `Check ${cleanName} state transitions & domain invariants (State)`,
+                `Handle ${cleanName} exception scenarios & permission boundaries (Negative)`,
+                `Verify ${cleanName} update & delete CRUD operations (CRUD)`
+              ]
+            }
+          ];
         });
       } else if (brd.capabilities && brd.capabilities.length > 0) {
         baseModules = brd.capabilities.map(cap => ({
           name: cap.name || 'Component',
-          features: cap.features && cap.features.length > 0 ? cap.features : [`Validate ${cap.name || 'Component'} flow`, `Handle error states`, `Check edge cases`]
+          features: cap.features && cap.features.length > 0 ? cap.features : [
+            `Validate ${cap.name || 'Component'} primary user workflow`,
+            `Validate ${cap.name || 'Component'} form input rules`,
+            `Check ${cap.name || 'Component'} boundary limits`,
+            `Handle ${cap.name || 'Component'} error states`,
+            `Verify ${cap.name || 'Component'} state transitions`
+          ]
         }));
       } else if (brd.useCases && brd.useCases.length > 0) {
         const byActor = {};
@@ -840,17 +898,26 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
         Object.entries(byActor).forEach(([actor, titles]) => {
           baseModules.push({ name: `${actor} Module`, features: titles });
         });
-      } else if (uiFiles.length > 0) {
-        baseModules = uiFiles.slice(0, 15).map(f => ({
-          name: f.name.replace(/\.[^/.]+$/, ""),
-          features: ['Component Rendering', 'User Interaction', 'State Management', 'Error Handling']
-        }));
       } else {
         baseModules = [
-          { name: 'Core Application Service', features: ['System Initialization', 'Data Processing', 'Workflow Management'] }
+          {
+            name: 'Core Application View',
+            features: [
+              'System Initialization & Route Rendering',
+              'Data Form Processing & Input Rules',
+              'Boundary & Null Parameter Verification'
+            ]
+          },
+          {
+            name: 'Core Business Workflows',
+            features: [
+              'Workflow State Transitions & Persistence',
+              'Exception Handling & Fallback UI'
+            ]
+          }
         ];
       }
- 
+
       const groups = [];
       let testCaseIndex = 1;
       baseModules.forEach(mod => {
@@ -944,12 +1011,34 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
       const brd = analysisResult.fullBrdReport;
       let baseApiEndpoints = [];
      
-      if (brd.apiGroups && brd.apiGroups.length > 0 && brd.apiGroups[0].endpoints && brd.apiGroups[0].endpoints.length > 0) {
-        baseApiEndpoints = brd.apiGroups[0].endpoints.map(ep => ({
-          path: ep.path || `/api/${(ep.desc || 'endpoint').toLowerCase().replace(/\s+/g, '-')}`,
-          methods: [ep.method || 'GET', 'POST']
-        }));
-      } else if (brd.businessDomains && brd.businessDomains.length > 0) {
+      if (brd.apiGroups && brd.apiGroups.length > 0) {
+        const allEndpoints = brd.apiGroups.flatMap(g => g.endpoints || []);
+        if (allEndpoints.length > 0) {
+          baseApiEndpoints = allEndpoints.map(ep => ({
+            path: ep.path || `/api/${(ep.desc || 'endpoint').toLowerCase().replace(/\s+/g, '-')}`,
+            methods: [ep.method || 'GET', 'POST']
+          }));
+        }
+      }
+      if (baseApiEndpoints.length === 0 && apiFiles.length > 0) {
+        baseApiEndpoints = apiFiles.map(f => {
+          const cName = f.name.replace(/\.[^/.]+$/, "").replace(/Controller|Route|Api|Handler/gi, "").toLowerCase();
+          return {
+             path: `/api/${cName || 'resource'}s`,
+             methods: ['GET', 'POST', 'PUT', 'DELETE']
+          };
+        });
+      }
+      if (baseApiEndpoints.length === 0 && brd.businessModels && brd.businessModels.length > 0) {
+        baseApiEndpoints = brd.businessModels.flatMap(m => {
+          const mName = (typeof m === 'string' ? m : m.name).toLowerCase();
+          return [
+            { path: `/api/${mName}s`, methods: ['GET', 'POST'] },
+            { path: `/api/${mName}s/{id}`, methods: ['GET', 'PUT', 'DELETE'] }
+          ];
+        });
+      }
+      if (baseApiEndpoints.length === 0 && brd.businessDomains && brd.businessDomains.length > 0) {
         baseApiEndpoints = brd.businessDomains.flatMap(dom => {
           const dName = (typeof dom === 'string' ? dom : dom.name).replace(/ Management| Processing| Administration| Services| System/g, '').toLowerCase().replace(/\s+/g, '-');
           return [
@@ -957,25 +1046,14 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
             { path: `/api/${dName}s/{id}`, methods: ['GET', 'PUT', 'DELETE'] }
           ];
         });
-      } else if (brd.businessModels && brd.businessModels.length > 0) {
-        baseApiEndpoints = brd.businessModels.map(m => {
-          const mName = (typeof m === 'string' ? m : m.name).toLowerCase();
-          return {
-            path: `/api/${mName}s`,
-            methods: ['GET', 'POST', 'PUT', 'DELETE']
-          };
-        });
-      } else if (brd.transactions && brd.transactions.length > 0) {
+      }
+      if (baseApiEndpoints.length === 0 && brd.transactions && brd.transactions.length > 0) {
         baseApiEndpoints = brd.transactions.map(t => ({
            path: t.path || t.name || '/api/endpoint',
            methods: t.methods && t.methods.length > 0 ? t.methods : ['GET', 'POST']
         }));
-      } else if (apiFiles.length > 0) {
-        baseApiEndpoints = apiFiles.slice(0, 10).map(f => ({
-           path: `/api/${f.name.replace(/\.[^/.]+$/, "").toLowerCase()}`,
-           methods: ['GET', 'POST', 'PUT']
-        }));
-      } else {
+      }
+      if (baseApiEndpoints.length === 0) {
         baseApiEndpoints = [
           { path: '/api/resource', methods: ['GET', 'POST', 'PUT'] }
         ];
@@ -988,7 +1066,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
          apiGroups.push({
             path: ep.path,
             methods: methods,
-            tcCount: methods.length * 2
+            tcCount: methods.length * 3
          });
       });
      
@@ -1010,8 +1088,9 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
       const activeApiGroups = apiGroups.filter(ep => ep.tcCount > 0).map(ep => {
          const detailedTests = ep.methods.map(m => {
             return [
-               { name: `Validate ${m} Successful Response`, type: 'Positive', purpose: `Ensure the endpoint returns 200 OK for valid ${m} requests.`, reason: `Detected ${m} route at ${ep.path}` },
-               { name: `Validate ${m} Invalid Payload/Params`, type: 'Negative', purpose: `Ensure the endpoint returns 400 Bad Request for invalid ${m} inputs.`, reason: `Detected need for input validation on ${m}` }
+               { name: `Validate ${m} Successful Response (200 OK)`, type: 'Positive', purpose: `Ensure the endpoint returns 200/201 OK for valid ${m} requests.`, reason: `Detected ${m} route at ${ep.path}` },
+               { name: `Validate ${m} Invalid Payload / Param Rules (400 Bad Request)`, type: 'Negative', purpose: `Ensure the endpoint returns 400 Bad Request for invalid ${m} inputs.`, reason: `Detected input validation requirements on ${m}` },
+               { name: `Validate ${m} Boundary & Security Parameter Checks (401/403)`, type: 'Validation', purpose: `Verify parameter bounds, null checks, and security headers for ${m}.`, reason: `Detected boundary & authorization rules on ${m}` }
             ];
          }).flat();
          

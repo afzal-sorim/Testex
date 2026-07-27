@@ -1050,19 +1050,31 @@ async def playwright_run(repo_name: str, background_tasks: BackgroundTasks):
             curr_status = run_info.get("status")
             port = run_info.get("port")
            
-            if port:
-                target_base_url = f"http://127.0.0.1:{port}"
+            # Check configured port
+            ports_to_check = [port] if port else []
+            # Fallback ports to check if configured port fails
+            ports_to_check.extend([8081, 8080, 8082, 8083, 3000, 5173])
+
+            found_active_port = None
+            for p in ports_to_check:
+                if not p:
+                    continue
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(1.0)
-                    s.connect(("127.0.0.1", port))
+                    s.settimeout(0.5)
+                    s.connect(("127.0.0.1", int(p)))
                     s.close()
-                    msg = f"[Step 4/5] Application server is running at {target_base_url}"
-                    print(msg)
-                    _append_log(msg)
+                    found_active_port = int(p)
                     break
                 except Exception:
                     pass
+
+            if found_active_port:
+                target_base_url = f"http://127.0.0.1:{found_active_port}"
+                msg = f"[Step 4/5] Application server is running at {target_base_url}"
+                print(msg)
+                _append_log(msg)
+                break
                    
             if curr_status in ["RUNNING", "RUNNING_API"]:
                 break
