@@ -299,6 +299,18 @@ export default function Discovery({
   const fileViewerRef = React.useRef(null);
   const existingPollRef = React.useRef(null);
 
+  const effectiveTotalTests = existingExecResult?.metrics?.total ?? existingTotal ?? result?.testMetrics?.total ?? result?.test_metrics?.total ?? 0;
+  const hasExistingTests = effectiveTotalTests > 0;
+
+  const handleOpenTestingStrategyModal = () => {
+    if (!hasExistingTests) {
+      setStrategyScreen('proposed');
+    } else {
+      setStrategyScreen('existing');
+    }
+    setShowTestingStrategy(true);
+  };
+
   // Pre-scan total count when result changes (new repo)
   useEffect(() => {
     const repositoryId = result ? getRepositoryId() : null;
@@ -1133,137 +1145,158 @@ export default function Discovery({
           <div className="px-6 pb-6 flex flex-col flex-1">
                 {/* EXISTING TEST COVERAGE HEADER & ACTION */}
                 <div className="mb-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-emerald-700 flex items-center gap-2 bg-emerald-50/80 px-3 py-2 rounded-lg border border-emerald-100 shadow-sm">
-                      <FolderOpen size={16} className="text-emerald-600" /> EXISTING TEST COVERAGE
-                    </h4>
-                    <button
-                      onClick={handleRunExistingTests}
-                      disabled={isRunningExisting}
-                      className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isRunningExisting ? (
-                        <>
-                          <Loader2 size={15} className="animate-spin text-white" />
-                          <span>Executing Suite...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={15} className="text-white fill-white" />
-                          <span>Run Existing Tests</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  {hasExistingTests ? (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-emerald-700 flex items-center gap-2 bg-emerald-50/80 px-3 py-2 rounded-lg border border-emerald-100 shadow-sm">
+                          <FolderOpen size={16} className="text-emerald-600" /> EXISTING TEST COVERAGE
+                        </h4>
+                        <button
+                          onClick={handleRunExistingTests}
+                          disabled={isRunningExisting}
+                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isRunningExisting ? (
+                            <>
+                              <Loader2 size={15} className="animate-spin text-white" />
+                              <span>Executing Suite...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play size={15} className="text-white fill-white" />
+                              <span>Run Existing Tests</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
 
-                  {/* Metrics Cards — Total always visible; Passed/Failed/Type only after execution */}
-                  <div className={`grid gap-3 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
-                    {/* Total Tests — always shown, sourced from pre-scan */}
-                    <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-indigo-100 transition-colors">
-                      <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                        <Activity size={15} className="text-[#5B5FF6]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Total Tests</div>
-                        <div className="text-base font-bold text-[#101828]">
-                          {existingTotal !== null ? existingTotal : (testMetrics?.total ?? 0)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Passed — only shown after execution */}
-                    {existingExecResult && (
-                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-emerald-100 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                          <CheckCircle size={15} className="text-emerald-500" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Passed</div>
-                          <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.passed}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Failed — only shown after execution */}
-                    {existingExecResult && (
-                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-rose-100 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                          <X size={15} className="text-rose-500" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Failed</div>
-                          <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.failed}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Testing Type — only shown after execution */}
-                    {existingExecResult && (
-                      <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-purple-100 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
-                          <Database size={15} className="text-purple-500" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Testing Types</div>
-                          <div className="text-[12px] font-extrabold text-[#101828] leading-snug break-words" title={existingExecResult.metrics.type}>{existingExecResult.metrics.type}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Live Execution Logs — shown during execution, auto-hides after */}
-                  {(isRunningExisting || showExistingLogs) && existingLogs.length > 0 && (
-                    <div className="mt-4 rounded-xl border border-slate-200 bg-[#0d1117] overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 border-b border-slate-700">
-                        <div className="flex gap-1">
-                          <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex-1">
-                          Live Execution Logs
-                        </span>
-                        {isRunningExisting && <Loader2 size={12} className="animate-spin text-emerald-400" />}
-                        {!isRunningExisting && <CheckCircle size={12} className="text-emerald-400" />}
-                      </div>
-                      <div
-                        ref={existingLogRef}
-                        className="max-h-40 overflow-y-auto p-3 space-y-0.5 font-mono text-[11px]"
-                      >
-                        {existingLogs.map((log, i) => (
-                          <div key={i} className={`flex gap-2 leading-relaxed ${
-                            log.level === 'PASS' ? 'text-emerald-400' :
-                            log.level === 'WARN' ? 'text-amber-400' :
-                            log.level === 'ERROR' ? 'text-rose-400' :
-                            'text-slate-300'
-                          }`}>
-                            <span className="text-slate-600 shrink-0">{log.ts}</span>
-                            <span>{log.msg}</span>
+                      {/* Metrics Cards — Total always visible; Passed/Failed/Type only after execution */}
+                      <div className={`grid gap-3 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
+                        {/* Total Tests — always shown, sourced from pre-scan */}
+                        <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-indigo-100 transition-colors">
+                          <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                            <Activity size={15} className="text-[#5B5FF6]" />
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Total Tests</div>
+                            <div className="text-base font-bold text-[#101828]">
+                              {effectiveTotalTests}
+                            </div>
+                          </div>
+                        </div>
 
-                  {/* Execution Results Summary Row — only after execution */}
-                  {existingExecResult && (
-                    <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center animate-fadeIn">
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
-                        <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                        {/* Passed — only shown after execution */}
+                        {existingExecResult && (
+                          <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-emerald-100 transition-colors">
+                            <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                              <CheckCircle size={15} className="text-emerald-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Passed</div>
+                              <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.passed}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Failed — only shown after execution */}
+                        {existingExecResult && (
+                          <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-rose-100 transition-colors">
+                            <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                              <X size={15} className="text-rose-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Failed</div>
+                              <div className="text-base font-bold text-[#101828]">{existingExecResult.metrics.failed}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Testing Type — only shown after execution */}
+                        {existingExecResult && (
+                          <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-2.5 shadow-sm hover:border-purple-100 transition-colors">
+                            <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+                              <Database size={15} className="text-purple-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[10px] uppercase font-bold text-[#667085] tracking-wider mb-0.5">Testing Types</div>
+                              <div className="text-[12px] font-extrabold text-[#101828] leading-snug break-words" title={existingExecResult.metrics.type}>{existingExecResult.metrics.type}</div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
-                        <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
+
+                      {/* Live Execution Logs — shown during execution, auto-hides after */}
+                      {(isRunningExisting || showExistingLogs) && existingLogs.length > 0 && (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-[#0d1117] overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 border-b border-slate-700">
+                            <div className="flex gap-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex-1">
+                              Live Execution Logs
+                            </span>
+                            {isRunningExisting && <Loader2 size={12} className="animate-spin text-emerald-400" />}
+                            {!isRunningExisting && <CheckCircle size={12} className="text-emerald-400" />}
+                          </div>
+                          <div
+                            ref={existingLogRef}
+                            className="max-h-40 overflow-y-auto p-3 space-y-0.5 font-mono text-[11px]"
+                          >
+                            {existingLogs.map((log, i) => (
+                              <div key={i} className={`flex gap-2 leading-relaxed ${
+                                log.level === 'PASS' ? 'text-emerald-400' :
+                                log.level === 'WARN' ? 'text-amber-400' :
+                                log.level === 'ERROR' ? 'text-rose-400' :
+                                'text-slate-300'
+                              }`}>
+                                <span className="text-slate-600 shrink-0">{log.ts}</span>
+                                <span>{log.msg}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Execution Results Summary Row — only after execution */}
+                      {existingExecResult && (
+                        <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center animate-fadeIn">
+                          <div>
+                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
+                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
+                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
+                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
+                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0 text-amber-600">
+                          <AlertCircle size={18} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-slate-700">No Existing Test Coverage</div>
+                          <p className="text-[13px] text-slate-500 mt-0.5 font-medium">
+                            No pre-existing functional test suites (JUnit, TestNG, Playwright) were detected in this repository baseline.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
-                        <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
-                        <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
-                      </div>
+                      <span className="px-3 py-1.5 bg-slate-200/80 text-slate-500 font-extrabold text-[10px] uppercase tracking-wider rounded-xl shrink-0">
+                        No Existing Suites
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1279,7 +1312,7 @@ export default function Discovery({
                 </div>
                 
                 <div className="pt-4 flex justify-center">
-                   <button onClick={() => setShowTestingStrategy(true)} className="px-6 py-2.5 bg-white border border-slate-200 text-[#5B5FF6] text-[14px] font-bold rounded-full hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm hover:shadow">
+                   <button onClick={handleOpenTestingStrategyModal} className="px-6 py-2.5 bg-white border border-slate-200 text-[#5B5FF6] text-[14px] font-bold rounded-full hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm hover:shadow">
                      View Testing Strategy <ChevronRight size={16} />
                    </button>
                 </div>
@@ -1425,6 +1458,24 @@ export default function Discovery({
 
               {strategyScreen === 'existing' && (
                 <div className="animate-fadeIn">
+                  {!hasExistingTests ? (
+                    <div className="p-8 bg-amber-50/60 border border-amber-200/80 rounded-3xl flex flex-col items-center justify-center text-center my-6 shadow-sm">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100/80 text-amber-600 flex items-center justify-center mb-3 border border-amber-200/60">
+                        <AlertCircle size={24} />
+                      </div>
+                      <h4 className="text-base font-extrabold text-amber-950 uppercase tracking-wide">No Existing Test Cases Detected</h4>
+                      <p className="text-sm text-amber-800 max-w-lg mt-1 font-medium leading-relaxed">
+                        No pre-existing functional test suites (JUnit, TestNG, Playwright, Selenium) were found in this repository baseline.
+                      </p>
+                      <button
+                        onClick={() => setStrategyScreen('proposed')}
+                        className="mt-5 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        View Proposed Test Cases <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
               {/* EXISTING TESTING ANALYSIS */}
               <div className="mb-10">
                 <h3 className="text-[13px] uppercase tracking-wider font-extrabold text-indigo-700 flex items-center gap-2 mb-4 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-100 w-max shadow-sm">
@@ -1658,7 +1709,9 @@ export default function Discovery({
                   })}
                 </div>
               </div>
-              </div>
+                    </>
+                  )}
+                </div>
               )}
  
               {strategyScreen === 'proposed' && (
