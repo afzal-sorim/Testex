@@ -1505,6 +1505,16 @@ async def reset_existing_tests_endpoint(repo_name: str):
         return JSONResponse(content={"reset": True})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.post("/existing-tests/stop/{repo_name:path}")
+async def stop_existing_tests_endpoint(repo_name: str):
+    """Aborts/terminates the current execution of existing tests."""
+    try:
+        clean_name = repo_name.split("/")[-1].replace(".git", "")
+        existing_test_runner_service.stop_existing_tests(clean_name)
+        return JSONResponse(content={"stopped": True})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
  
 @router.get('/functional-testing/{repositoryId}/recommendation')
 async def get_test_recommendation(repositoryId: str):

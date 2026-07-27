@@ -562,7 +562,9 @@ test.describe('Navigation & Core Routing', () => {
                 skip_next_catch = False
                 continue
 
-            if "await page.goto(" in line:
+            leading_whitespace = line[:len(line) - len(line.lstrip())]
+
+            if "await page.goto(" in line and "_targetUrl" not in line and "_res.status()" not in line and "fallbackHtml" not in line and "baseURL || '/'" not in line:
                 start_idx = line.find("await page.goto(") + len("await page.goto(")
                 end_idx = line.rfind(").catch")
                 if end_idx == -1:
@@ -570,7 +572,7 @@ test.describe('Navigation & Core Routing', () => {
 
                 if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                     url_expr = line[start_idx:end_idx].strip()
-                    indent = line[:line.find("await page.goto(")]
+                    indent = leading_whitespace
                     replacement = (
                         f"{indent}{{\n"
                         f"{indent}  const _targetUrl = {url_expr};\n"
@@ -588,17 +590,17 @@ test.describe('Navigation & Core Routing', () => {
                         f"{indent}}}"
                     )
                     new_lines.append(replacement)
-                    if ".catch(async () =>" in line or ".catch(" in line:
+                    if (".catch(async () => {" in line or ".catch(() => {" in line) or (line.strip().endswith("{") and ".catch(" in line):
                         skip_next_catch = True
                 else:
                     new_lines.append(line)
 
-            elif "await expect(" in line and ".toBeVisible()" in line:
+            elif "await expect(" in line and ".toBeVisible()" in line and "_targetLoc" not in line and "Skipped" not in line:
                 start_idx = line.find("await expect(") + len("await expect(")
                 end_idx = line.rfind(").toBeVisible()")
                 if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                     loc_expr = line[start_idx:end_idx].strip()
-                    indent = line[:line.find("await expect(")]
+                    indent = leading_whitespace
                     replacement = (
                         f"{indent}{{\n"
                         f"{indent}  const _targetLoc = {loc_expr};\n"
@@ -764,8 +766,8 @@ test.describe('Navigation & Core Routing', () => {
         if test_results_dir.exists():
             shutil.rmtree(test_results_dir, ignore_errors=True)
 
-        # Step 1: npm install (only if node_modules is missing)
-        if not (project_dir / "node_modules").exists():
+        # Step 1: npm install (if @playwright/test is missing in node_modules)
+        if not (project_dir / "node_modules" / "@playwright" / "test").exists():
             ok, output = await self._run_subprocess(
                 ["npm", "install", "--prefer-offline", "--no-audit", "--no-fund"],
                 project_dir,

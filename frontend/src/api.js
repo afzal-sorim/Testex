@@ -226,6 +226,11 @@ export const resetExistingTests = async (repoName) => {
   return response.data;
 };
 
+export const stopExistingTests = async (repoName) => {
+  const response = await apiClient.post(`/existing-tests/stop/${encodeURIComponent(repoName)}`);
+  return response.data;
+};
+
 // --- Selenium Testing Endpoints ---
 
 export const getSeleniumStatus = async (migrationId) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Play, CheckCircle, Search, Layers, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Check, Activity, ShieldCheck, Box, Server, Database, Loader2, ArrowRight, Layout, X, AlertCircle, Download, AlertTriangle, Target, Briefcase, Users, Code, Zap, Eye, Minus } from 'lucide-react';
-import { analyzeRepository, getRepositoryTree, getRepositoryFileContent, API_BASE_URL, formatNgrokUrl, runExistingTests, getExistingTestsStatus, scanExistingTests, resetExistingTests } from '../api';
+import { GitBranch, Play, CheckCircle, Search, Layers, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Check, Activity, ShieldCheck, Box, Server, Database, Loader2, ArrowRight, Layout, X, AlertCircle, Download, AlertTriangle, Target, Briefcase, Users, Code, Zap, Eye, Minus, Clock, Filter, BarChart3, Terminal, ChevronUp, Hash, XCircle, SkipForward, FileSearch } from 'lucide-react';
+import { analyzeRepository, getRepositoryTree, getRepositoryFileContent, API_BASE_URL, formatNgrokUrl, runExistingTests, getExistingTestsStatus, scanExistingTests, resetExistingTests, stopExistingTests } from '../api';
 import { motion } from 'framer-motion';
 import { JavaIcon, SpringIcon, MavenIcon } from '../components/TechIcons';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -298,9 +298,18 @@ export default function Discovery({
   const existingLogRef = React.useRef(null);
   const fileViewerRef = React.useRef(null);
   const existingPollRef = React.useRef(null);
+  // --- Validation Report Modal State ---
+  const [showValidationReport, setShowValidationReport] = useState(false);
+  const [validationFilter, setValidationFilter] = useState('ALL');
+  const [validationSearch, setValidationSearch] = useState('');
+  const [expandedFailures, setExpandedFailures] = useState({});
 
   const effectiveTotalTests = existingExecResult?.metrics?.total ?? existingTotal ?? result?.testMetrics?.total ?? result?.test_metrics?.total ?? 0;
   const hasExistingTests = effectiveTotalTests > 0;
+  const executedTestLogsCount = existingLogs.filter(log => log.msg && (log.msg.startsWith("  [") || log.msg.startsWith("  ✔"))).length;
+  const testProgressPercent = effectiveTotalTests > 0 
+    ? Math.min(100, Math.round((executedTestLogsCount / effectiveTotalTests) * 100)) 
+    : (isRunningExisting ? 10 : 0);
 
   const handleOpenTestingStrategyModal = () => {
     if (!hasExistingTests) {
@@ -331,8 +340,16 @@ export default function Discovery({
     // Fast pre-scan: get total test count
     scanExistingTests(repositoryId)
       .then(data => {
-        setExistingTotal(data.total ?? 0);
+        const total = data.total ?? 0;
+        setExistingTotal(total);
         setExistingFramework(data.framework || null);
+
+        // If there are existing tests, auto-run them immediately
+        if (total > 0) {
+          setTimeout(() => {
+            handleRunExistingTests();
+          }, 500);
+        }
       })
       .catch(() => {
         setExistingTotal(0);
@@ -345,6 +362,21 @@ export default function Discovery({
       existingLogRef.current.scrollTop = existingLogRef.current.scrollHeight;
     }
   }, [existingLogs]);
+
+  const handleStopExistingTests = async () => {
+    const repositoryId = getRepositoryId();
+    if (!repositoryId) return;
+    try {
+      await stopExistingTests(repositoryId);
+      if (existingPollRef.current) clearInterval(existingPollRef.current);
+      setIsRunningExisting(false);
+      // Fetch final logs to show the stop confirmation
+      const finalStatus = await getExistingTestsStatus(repositoryId).catch(() => ({}));
+      if (finalStatus.logs) setExistingLogs(finalStatus.logs);
+    } catch (err) {
+      console.error('Failed to stop existing tests:', err);
+    }
+  };
 
   const handleRunExistingTests = async () => {
     const repositoryId = getRepositoryId();
@@ -381,6 +413,13 @@ export default function Discovery({
       // Delay hiding logs by 2s so user can see the final log lines
       setTimeout(() => setShowExistingLogs(false), 2000);
       setExistingExecResult(res);
+      // Auto-open validation report modal
+      if (res?.test_results?.length > 0 || res?.metrics) {
+        setValidationFilter('ALL');
+        setValidationSearch('');
+        setExpandedFailures({});
+        setTimeout(() => setShowValidationReport(true), 2200);
+      }
     } catch (err) {
       clearInterval(existingPollRef.current);
       console.error('Failed to execute existing tests:', err);
@@ -1151,24 +1190,47 @@ export default function Discovery({
                         <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-emerald-700 flex items-center gap-2 bg-emerald-50/80 px-3 py-2 rounded-lg border border-emerald-100 shadow-sm">
                           <FolderOpen size={16} className="text-emerald-600" /> EXISTING TEST COVERAGE
                         </h4>
-                        <button
-                          onClick={handleRunExistingTests}
-                          disabled={isRunningExisting}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isRunningExisting ? (
-                            <>
-                              <Loader2 size={15} className="animate-spin text-white" />
-                              <span>Executing Suite...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Play size={15} className="text-white fill-white" />
-                              <span>Run Existing Tests</span>
-                            </>
-                          )}
-                        </button>
+                        {isRunningExisting && (
+                          <button
+                            onClick={handleStopExistingTests}
+                            className="px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-rose-500"
+                          >
+                            <X size={15} className="text-white font-black" />
+                            <span>Stop Running Existing Tests</span>
+                          </button>
+                        )}
                       </div>
+                      
+                      {isRunningExisting && (
+                        <div className="mb-4 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl animate-fadeIn">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[12px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                              <Loader2 size={13} className="animate-spin text-[#5B5FF6]" /> 
+                              Existing Tests Validation in Progress...
+                            </span>
+                            <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                              {executedTestLogsCount} / {effectiveTotalTests} ({testProgressPercent}%)
+                            </span>
+                          </div>
+                          
+                          {/* Progress Track */}
+                          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden relative shadow-inner">
+                            {/* Animated bar indicator */}
+                            <div 
+                              className="h-full rounded-full bg-gradient-to-r from-[#5B5FF6] via-[#7B61FF] to-[#9F85FF] transition-all duration-500 ease-out shadow"
+                              style={{ width: `${testProgressPercent}%` }}
+                            />
+                            
+                            {/* Running light animation */}
+                            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] bg-[length:200px_100%] animate-pulse" />
+                          </div>
+
+                          {/* Quick sub-status hint */}
+                          <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                            Please wait while we run the test suite and compile a detailed validation report.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Metrics Cards — Total always visible; Passed/Failed/Type only after execution */}
                       <div className={`grid gap-3 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
@@ -1261,22 +1323,38 @@ export default function Discovery({
 
                       {/* Execution Results Summary Row — only after execution */}
                       {existingExecResult && (
-                        <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center animate-fadeIn">
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                        <div className="mt-4 animate-fadeIn">
+                          <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
+                          <div className="mt-3 flex justify-center">
+                            <button
+                              onClick={() => {
+                                setValidationFilter('ALL');
+                                setValidationSearch('');
+                                setExpandedFailures({});
+                                setShowValidationReport(true);
+                              }}
+                              className="px-5 py-2.5 bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] hover:from-[#4B4FE6] hover:to-[#6B51EF] text-white font-extrabold text-xs rounded-xl shadow-[0_4px_14px_rgba(91,95,246,0.35)] hover:shadow-[0_6px_20px_rgba(91,95,246,0.5)] transition-all flex items-center gap-2 active:scale-95"
+                            >
+                              <FileSearch size={15} />
+                              <span>View Validation Report</span>
+                            </button>
                           </div>
                         </div>
                       )}
@@ -2244,6 +2322,305 @@ export default function Discovery({
           </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════
+          TEST VALIDATION REPORT MODAL
+          ═══════════════════════════════════════════════════════ */}
+      {showValidationReport && existingExecResult && (() => {
+        const m = existingExecResult.metrics || {};
+        const fi = existingExecResult.framework_info || {};
+        const testResults = existingExecResult.test_results || [];
+        const fileBreakdown = existingExecResult.file_breakdown || [];
+        const totalTests = m.total || 0;
+        const passedTests = m.passed || 0;
+        const failedTests = m.failed || 0;
+        const skippedTests = m.skipped || 0;
+        const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : '100.0';
+        const allPassed = failedTests === 0;
+
+        // Filter + search
+        const filtered = testResults.filter(t => {
+          if (validationFilter !== 'ALL') {
+            if (validationFilter === 'FAILED' && t.status !== 'FAILED' && t.status !== 'ERROR') return false;
+            if (validationFilter === 'PASSED' && t.status !== 'PASSED') return false;
+            if (validationFilter === 'SKIPPED' && t.status !== 'SKIPPED') return false;
+          }
+          if (validationSearch) {
+            const q = validationSearch.toLowerCase();
+            return (t.name || '').toLowerCase().includes(q) || (t.classname || '').toLowerCase().includes(q) || (t.file || '').toLowerCase().includes(q);
+          }
+          return true;
+        });
+
+        const toggleFailure = (idx) => {
+          setExpandedFailures(prev => ({ ...prev, [idx]: !prev[idx] }));
+        };
+
+        // Pass rate arc for SVG gauge
+        const gaugeRadius = 36;
+        const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+        const gaugeOffset = gaugeCircumference - (parseFloat(passRate) / 100) * gaugeCircumference;
+
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={() => setShowValidationReport(false)}>
+            <div className="bg-white rounded-3xl w-[95vw] max-w-[1100px] h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
+
+              {/* ── HEADER ─────────────────────────────────────── */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white via-slate-50/80 to-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#5B5FF6] to-[#7B61FF] flex items-center justify-center shadow-lg shadow-indigo-200">
+                    <BarChart3 size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-[#101828] tracking-tight">Existing Tests Validation Report</h2>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {fi.detected_framework && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-indigo-100">
+                          <Code size={10} /> {fi.detected_framework}
+                        </span>
+                      )}
+                      {fi.build_tool && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-emerald-100">
+                          <Box size={10} /> {fi.build_tool}
+                        </span>
+                      )}
+                      {fi.test_source_dir && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-full border border-slate-200 font-mono">
+                          <Folder size={10} /> {fi.test_source_dir}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setShowValidationReport(false)} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* ── RUNNER COMMAND BAR ──────────────────────────── */}
+              {fi.runner_command && (
+                <div className="px-6 py-2.5 bg-[#0d1117] border-b border-slate-800 flex items-center gap-2">
+                  <Terminal size={13} className="text-emerald-400 shrink-0" />
+                  <code className="text-[11px] text-emerald-300 font-mono font-bold tracking-wide">{fi.runner_command}</code>
+                  <span className="text-[10px] text-slate-500 ml-auto font-mono">exited in {m.duration}</span>
+                </div>
+              )}
+
+              {/* ── SUMMARY DASHBOARD ──────────────────────────── */}
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
+                <div className="flex items-center gap-4">
+                  {/* Pass Rate Gauge */}
+                  <div className="relative flex-shrink-0">
+                    <svg width="88" height="88" viewBox="0 0 88 88" className="transform -rotate-90">
+                      <circle cx="44" cy="44" r={gaugeRadius} fill="none" stroke="#e2e8f0" strokeWidth="7" />
+                      <circle cx="44" cy="44" r={gaugeRadius} fill="none" stroke={allPassed ? '#10b981' : failedTests > passedTests ? '#ef4444' : '#f59e0b'} strokeWidth="7" strokeDasharray={gaugeCircumference} strokeDashoffset={gaugeOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-lg font-black text-slate-900 leading-none">{passRate}%</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Pass Rate</span>
+                    </div>
+                  </div>
+
+                  {/* Metric Cards */}
+                  <div className="grid grid-cols-5 gap-2.5 flex-1">
+                    {[
+                      { label: 'Total', value: totalTests, icon: Hash, color: 'bg-blue-50 text-blue-600', borderColor: 'border-blue-100' },
+                      { label: 'Passed', value: passedTests, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600', borderColor: 'border-emerald-100' },
+                      { label: 'Failed', value: failedTests, icon: XCircle, color: 'bg-rose-50 text-rose-600', borderColor: 'border-rose-100' },
+                      { label: 'Skipped', value: skippedTests, icon: SkipForward, color: 'bg-amber-50 text-amber-600', borderColor: 'border-amber-100' },
+                      { label: 'Duration', value: m.duration || '—', icon: Clock, color: 'bg-purple-50 text-purple-600', borderColor: 'border-purple-100' },
+                    ].map((card, ci) => (
+                      <div key={ci} className={`bg-white rounded-xl p-3 border ${card.borderColor} flex items-center gap-2 shadow-sm`}>
+                        <div className={`w-7 h-7 rounded-lg ${card.color} flex items-center justify-center shrink-0`}>
+                          <card.icon size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">{card.label}</div>
+                          <div className="text-sm font-black text-slate-900 leading-tight">{card.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── FILTER BAR ─────────────────────────────────── */}
+              <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-3 bg-white shrink-0 flex-wrap">
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                  {[
+                    { key: 'ALL', label: 'All', count: testResults.length },
+                    { key: 'PASSED', label: 'Passed', count: passedTests },
+                    { key: 'FAILED', label: 'Failed', count: failedTests },
+                    { key: 'SKIPPED', label: 'Skipped', count: skippedTests },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setValidationFilter(tab.key)}
+                      className={`px-3 py-1.5 text-[11px] font-bold rounded-md transition-all ${
+                        validationFilter === tab.key
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {tab.label} <span className="text-[10px] text-slate-400 ml-0.5">({tab.count})</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search test name or class..."
+                    value={validationSearch}
+                    onChange={e => setValidationSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-[12px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#5B5FF6] focus:ring-1 focus:ring-[#5B5FF6] transition-all"
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium ml-auto">
+                  Showing {filtered.length} of {testResults.length} tests
+                </span>
+              </div>
+
+              {/* ── FILE BREAKDOWN ─────────────────────────────── */}
+              {fileBreakdown.length > 0 && (
+                <div className="px-6 py-3 border-b border-slate-100 bg-white shrink-0">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                    <FileText size={12} /> Test File Breakdown
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {fileBreakdown.map((fb, fbi) => (
+                      <div key={fbi} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 shrink-0">
+                        <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]" title={fb.file}>{fb.file}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-emerald-600">{fb.passed}✓</span>
+                          {fb.failed > 0 && <span className="text-[10px] font-bold text-rose-500">{fb.failed}✗</span>}
+                          {fb.skipped > 0 && <span className="text-[10px] font-bold text-amber-500">{fb.skipped}⏭</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── TEST RESULTS TABLE ─────────────────────────── */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left">
+                  <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-10">#</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-20">Status</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Test Class</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Test Name</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-24 text-right">Duration</th>
+                      <th className="px-4 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-16 text-center">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
+                          <div className="flex flex-col items-center gap-2">
+                            <Search size={24} className="text-slate-300" />
+                            <span>No tests match the current filter</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {filtered.map((t, idx) => {
+                      const globalIdx = testResults.indexOf(t);
+                      const statusConfig = {
+                        'PASSED': { icon: CheckCircle, label: 'PASSED', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+                        'FAILED': { icon: XCircle, label: 'FAILED', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+                        'ERROR': { icon: AlertTriangle, label: 'ERROR', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+                        'SKIPPED': { icon: SkipForward, label: 'SKIPPED', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' },
+                      };
+                      const sc = statusConfig[t.status] || statusConfig['PASSED'];
+                      const StatusIcon = sc.icon;
+                      const hasFailure = t.failure_message && t.status !== 'PASSED' && t.status !== 'SKIPPED';
+                      const isExpanded = expandedFailures[globalIdx];
+
+                      return (
+                        <React.Fragment key={globalIdx}>
+                          <tr className={`hover:bg-slate-50/80 transition-colors ${t.status === 'FAILED' || t.status === 'ERROR' ? 'bg-rose-50/30' : ''}`}>
+                            <td className="px-4 py-2.5 text-[11px] font-mono text-slate-400">{idx + 1}</td>
+                            <td className="px-3 py-2.5">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${sc.bg} ${sc.text} border ${sc.border}`}>
+                                <StatusIcon size={10} />
+                                {sc.label}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-[11px] font-bold text-slate-600 font-mono truncate max-w-[250px]" title={t.classname}>
+                              {t.classname ? t.classname.split('.').pop() : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-[12px] font-bold text-slate-800 truncate max-w-[300px]" title={t.name}>{t.name}</td>
+                            <td className="px-3 py-2.5 text-[11px] text-slate-500 font-mono text-right">{t.duration}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              {hasFailure ? (
+                                <button onClick={() => toggleFailure(globalIdx)} className="text-rose-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50">
+                                  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </td>
+                          </tr>
+                          {/* Expandable Failure Details */}
+                          {isExpanded && hasFailure && (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-0">
+                                <div className="bg-[#1a1b26] rounded-xl my-2 overflow-hidden border border-rose-200/30">
+                                  <div className="flex items-center gap-2 px-4 py-2 bg-rose-900/30 border-b border-rose-800/20">
+                                    <AlertTriangle size={11} className="text-rose-400" />
+                                    <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">Failure Details</span>
+                                  </div>
+                                  <pre className="px-4 py-3 text-[10px] text-rose-200/90 font-mono overflow-x-auto max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap break-words leading-relaxed">
+                                    {t.failure_message}
+                                  </pre>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── VERDICT FOOTER ─────────────────────────────── */}
+              <div className={`px-6 py-4 border-t border-slate-100 shrink-0 flex items-center justify-between ${allPassed ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                <div className="flex items-center gap-3">
+                  {allPassed ? (
+                    <>
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle size={20} className="text-emerald-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-emerald-800 uppercase tracking-wide">All Tests Passed</div>
+                        <div className="text-[11px] text-emerald-600 font-medium">{totalTests} tests executed successfully</div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center">
+                        <XCircle size={20} className="text-rose-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-rose-800 uppercase tracking-wide">{failedTests} Test{failedTests !== 1 ? 's' : ''} Failed</div>
+                        <div className="text-[11px] text-rose-600 font-medium">{passedTests} passed · {skippedTests} skipped · {failedTests} failed</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                  {new Date().toLocaleString()}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
  
     </div>
   );
