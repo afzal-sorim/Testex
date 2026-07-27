@@ -30,6 +30,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # Copy backend requirements.txt first to leverage Docker cache
 COPY python_backend/requirements.txt .
 
+# Install CPU-only PyTorch to save gigabytes of space (sentence-transformers dependency)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
