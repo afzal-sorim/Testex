@@ -21,7 +21,7 @@ async def add_ngrok_header_middleware(request: Request, call_next):
 # Configure CORS origins dynamically to support local development and deployed frontend (Render)
 cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
 if cors_origins_str:
-    origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
+    origins = [o.strip().rstrip("/") for o in cors_origins_str.split(",") if o.strip()]
 else:
     origins = [
         "http://localhost:5173",
