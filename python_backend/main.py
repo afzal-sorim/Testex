@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import api
@@ -17,10 +18,27 @@ async def add_ngrok_header_middleware(request: Request, call_next):
     response.headers["ngrok-skip-browser-warning"] = "true"
     return response
 
+# Configure CORS origins dynamically to support local development and deployed frontend (Render)
+cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if cors_origins_str:
+    origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+
+# Default to allow all Render subdomains to prevent CORS issues on Render deployment
+cors_origins_regex = os.getenv("CORS_ALLOWED_ORIGINS_REGEX", r"https://.*\.onrender\.com") or None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=".*",
+    allow_origins=origins,
+    allow_origin_regex=cors_origins_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

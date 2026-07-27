@@ -1,0 +1,11 @@
+[22396] 21 Jul 00:24:36.325 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+[22396] 21 Jul 00:24:36.325 # Redis version=5.0.14.1, bits=64, commit=ec77f72d, modified=0, pid=22396, just started
+[22396] 21 Jul 00:24:36.325 # Warning: no config file specified, using the default config. In order to specify a config file use c:\users\afzal\documents\functional test-acc\functional-testing\redis\redis-server.exe /path/to/redis.conf
+[22396] 21 Jul 00:24:36.329 * Running mode=standalone, port=6379.
+[22396] 21 Jul 00:24:36.329 # Server initialized
+[22396] 21 Jul 00:24:36.331 * DB loaded from disk: 0.001 seconds
+[22396] 21 Jul 00:24:36.331 * Ready to accept connections
+[22396] 21 Jul 01:24:37.052 * 1 changes in 3600 seconds. Saving...
+[22396] 21 Jul 01:24:37.052 * Background saving started by pid 32824
+[22396] 21 Jul 01:24:37.163 # fork operation complete
+[22396] 21 Jul 01:24:37.163 * Background saving terminated with success

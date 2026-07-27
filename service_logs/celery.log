@@ -1,0 +1,38 @@
+ 
+ -------------- celery@DESKTOP-I53TOC5 v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-10-10.0.26200-SP0 2026-07-21 00:24:48
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         migration_tasks:0x1f8be68eb90
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/0
+- *** --- * --- .> concurrency: 12 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . run_background_migration
+  . run_dynamic_analysis_pipeline
+
+[2026-07-21 00:24:48,109: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-07-21 00:24:48,109: INFO/MainProcess] mingle: searching for neighbors
+[2026-07-21 00:24:49,137: INFO/MainProcess] mingle: all alone
+[2026-07-21 00:24:49,164: INFO/MainProcess] celery@DESKTOP-I53TOC5 ready.
+[2026-07-21 00:25:30,038: INFO/MainProcess] Task run_dynamic_analysis_pipeline[e6570a3a-1eae-413a-b602-cbad7bbfc41b] received
+[2026-07-21 00:25:30,537: INFO/MainProcess] Loading faiss with AVX512 support.
+[2026-07-21 00:25:30,537: INFO/MainProcess] Could not load library with AVX512 support due to:
+ModuleNotFoundError("No module named 'faiss.swigfaiss_avx512'")
+[2026-07-21 00:25:30,538: INFO/MainProcess] Loading faiss with AVX2 support.
+[2026-07-21 00:25:30,538: INFO/MainProcess] Could not load library with AVX2 support due to:
+ModuleNotFoundError("No module named 'faiss.swigfaiss_avx2'")
+[2026-07-21 00:25:30,538: INFO/MainProcess] Loading faiss.
+[2026-07-21 00:25:30,568: INFO/MainProcess] Successfully loaded faiss.
+[2026-07-21 00:25:30,711: WARNING/MainProcess] [spring-petclinic] ⚡ PIPELINE CACHE HIT — returning completed report immediately.
+[2026-07-21 00:25:30,717: INFO/MainProcess] Task run_dynamic_analysis_pipeline[e6570a3a-1eae-413a-b602-cbad7bbfc41b] succeeded in 0.6719999999986612s: {'status': 'COMPLETED', 'ui': {'total': 20, 'passed': 19, 'failed': 1, 'tool': 'Playwright'}, 'api': {'total': 59, 'passed': 58, 'failed': 1, 'tool': 'Requests'}}
+[2026-07-21 00:25:31,738: INFO/MainProcess] Task run_dynamic_analysis_pipeline[2724131f-56b5-427c-8b21-6f1336e8065b] received
+[2026-07-21 00:25:31,739: WARNING/MainProcess] [spring-petclinic] ⚡ PIPELINE CACHE HIT — returning completed report immediately.
+[2026-07-21 00:25:31,740: INFO/MainProcess] Task run_dynamic_analysis_pipeline[2724131f-56b5-427c-8b21-6f1336e8065b] succeeded in 0.0s: {'status': 'COMPLETED', 'ui': {'total': 20, 'passed': 19, 'failed': 1, 'tool': 'Playwright'}, 'api': {'total': 59, 'passed': 58, 'failed': 1, 'tool': 'Requests'}}
