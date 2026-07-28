@@ -510,9 +510,6 @@ const DrillDownModal = ({ isOpen, type, onClose, stats }) => {
                             <CheckCircle size={14} className={isGreen ? 'text-emerald-500' : 'text-[#2563EB]'} />
                             <span className="font-bold text-[#344054] text-sm">{tc.name}</span>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${tc.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : tc.type === 'Negative' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                            {tc.type}
-                          </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
                           <div>
@@ -1260,36 +1257,78 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
             }
           });
 
+          // ── Extract Repository-Specific Real Artifact Names ──
+          // 1. Real UI files/components from repo (filter out generic layer names)
+          const realUiFiles = (uiFiles || []).map(f => f.name).filter(Boolean);
+          const realUiModules = (tooltips.activeGroups || []).map(g => g.fileName || g.name).filter(name =>
+            name && !name.match(/Application Services|Data Access Layer|API Controllers|System Module|Core Application/i)
+          );
+          const uiItems = [...new Set([...realUiFiles, ...realUiModules])];
+
+          const uiEvidence = uiItems.length > 0
+            ? `Derived from repository UI modules: ${uiItems.slice(0, 3).join(', ')}${uiItems.length > 3 ? ` (+${uiItems.length - 3} more)` : ''}.`
+            : (apiFiles.length > 0
+              ? `Derived from frontend views mapped to controllers: ${apiFiles.slice(0, 3).map(f => f.name).join(', ')}.`
+              : `Derived from detected UI page components & interactive form views.`);
+
+          // 2. Real API Controllers / Endpoints from repo (filter out placeholder /api/resource)
+          const realApiFiles = (apiFiles || []).map(f => f.name).filter(Boolean);
+          const realEndpoints = (tooltips.activeApiGroups || []).map(ep => ep.path).filter(p => p && p !== '/api/resource');
+          const apiItems = realEndpoints.length > 0
+            ? realEndpoints
+            : (realApiFiles.length > 0 ? realApiFiles : []);
+
+          const apiEvidence = apiItems.length > 0
+            ? `Derived from REST endpoints: ${apiItems.slice(0, 3).join(', ')}${apiItems.length > 3 ? ` (+${apiItems.length - 3} more)` : ''}.`
+            : `Derived from REST controller endpoints identified in repository analysis.`;
+
+          // 3. Real Business Models / Entities / DTOs from repo
+          const realModels = (brd.businessModels || []).map(m => typeof m === 'string' ? m : m.name).filter(m =>
+            m && !m.match(/Application Services|Data Access Layer|API Controllers|System Module/i)
+          );
+          const ruleItems = realModels.length > 0
+            ? realModels
+            : (uiItems.length > 0 ? uiItems : realApiFiles);
+
+          const ruleEvidence = ruleItems.length > 0
+            ? `Derived from validation rules & constraints in ${ruleItems.slice(0, 3).join(', ')}${ruleItems.length > 3 ? ` (+${ruleItems.length - 3} more)` : ''}.`
+            : `Derived from @NotNull/@NotEmpty annotations, input constraints, and entity validation methods.`;
+
+          // 4. Real Security / Auth configs & protected endpoints from repo
+          const securityFiles = (brd.sourceFiles || []).filter(f => typeof f === 'string' && f.match(/Security|Auth|Jwt|Token|Filter|Permission/i)).map(f => f.split('/').pop().split('\\').pop());
+          const authEndpoints = (realEndpoints || []).filter(p => p.includes('auth') || p.includes('user') || p.includes('login') || p.includes('security'));
+          const authItems = [...new Set([...securityFiles, ...authEndpoints])];
+
+          const authEvidence = authItems.length > 0
+            ? `Derived from auth configs & protected routes: ${authItems.slice(0, 3).join(', ')}.`
+            : `Derived from security configurations, auth middleware, and protected API endpoints.`;
+
           suiteComposition = [
             {
               name: 'UI Functional & Workflows',
               count: uiCases.length,
-              description: 'User journey navigation, form submissions, component rendering, and DOM interaction validations.',
-              evidence: `Derived from ${uiGroups.length || 0} detected UI page modules and interactive frontend components.`,
+              evidence: uiEvidence,
               colorTheme: 'indigo',
               testCases: uiCases
             },
             {
-              name: 'API Contract & CRUD Verbs',
+              name: 'API Contracts',
               count: apiCases.length,
-              description: 'HTTP request method verification (GET, POST, PUT, DELETE), status code compliance, and payload structure checking.',
-              evidence: `Derived from ${apiGroups.length || 0} REST controller endpoint paths identified in repository analysis.`,
+              evidence: apiEvidence,
               colorTheme: 'emerald',
               testCases: apiCases
             },
             {
               name: 'Business Rule & Validation',
               count: ruleCases.length,
-              description: 'Domain constraint enforcement, mandatory parameter checking, and state transition invariant validation.',
-              evidence: 'Derived from @NotNull/@NotEmpty annotations, form validation rules, and domain entity methods.',
+              evidence: ruleEvidence,
               colorTheme: 'amber',
               testCases: ruleCases
             },
             {
               name: 'Authentication & Security',
               count: authCases.length,
-              description: 'Protected route access, token header checks, invalid credential rejection, and authorization boundaries.',
-              evidence: 'Derived from detected security configurations, auth middleware, and protected API endpoints.',
+              evidence: authEvidence,
               colorTheme: 'rose',
               testCases: authCases
             }
@@ -1299,10 +1338,25 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
       tooltips.suiteComposition = suiteComposition;
     }
 
-    return { totalUi, modules, avgComplexity, estExecMins, tooltips, totalApi, endpoints, coverageScope, dataMocks, uiFiles, apiFiles, suiteComposition: tooltips.suiteComposition || [] };
+    // Compute priority counts (P0/P1/P2) strictly aligned with Test Category risk levels
+    const priorityCounts = { P0: 0, P1: 0, P2: 0 };
+    (tooltips.suiteComposition || []).forEach(cat => {
+      const catName = cat.name.toLowerCase();
+      const catPriority = (catName.includes('auth') || catName.includes('security'))
+        ? 'P0'
+        : (catName.includes('ui') || catName.includes('workflow') || catName.includes('business') || catName.includes('rule'))
+          ? 'P1'
+          : 'P2';
+
+      if (catPriority === 'P0') priorityCounts.P0 += cat.count;
+      else if (catPriority === 'P1') priorityCounts.P1 += cat.count;
+      else priorityCounts.P2 += cat.count;
+    });
+
+    return { totalUi, modules, avgComplexity, estExecMins, tooltips, totalApi, endpoints, coverageScope, dataMocks, uiFiles, apiFiles, suiteComposition: tooltips.suiteComposition || [], priorityCounts };
   };
 
-  const { totalUi, modules, avgComplexity, estExecMins, tooltips, totalApi, endpoints, coverageScope, dataMocks, uiFiles, apiFiles, suiteComposition } = calculateTestStats();
+  const { totalUi, modules, avgComplexity, estExecMins, tooltips, totalApi, endpoints, coverageScope, dataMocks, uiFiles, apiFiles, suiteComposition, priorityCounts } = calculateTestStats();
   const currentDate = new Date().toLocaleDateString();
 
   if (!analysisResult) return null;
@@ -1320,159 +1374,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
   return (
     <div className="flex flex-col gap-8 animate-fadeIn w-full pb-10 h-full mt-4">
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* UI Test Case Summary */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#EAECF0] flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-[#101828] flex items-center gap-2">
-              <FileText size={20} className="text-[#2563EB]" />
-              UI Test Case Summary
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-2">
-            <div
-              onClick={() => setDrillDownState('testCases')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    label="PLANNED UI TEST CASE SCENARIOS"
-                    details="INFO - Test Count"
-                    onIconClick={() => setDrillDownState('testCountJustification')}
-                  />
-                </div>
-                <p className="text-3xl font-black text-[#5B5FF6]">{totalUi}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-blue-600 transition-colors">Click to justify count</span>
-            </div>
-
-            <div
-              onClick={() => setDrillDownState('modules')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    label="PLANNED MODULES COVERED"
-                    details="Modules Covered Drill-down"
-                    onIconClick={() => setDrillDownState('modules')}
-                  />
-                </div>
-                <p className="text-3xl font-black text-[#101828]">{modules}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-blue-600 transition-colors">Click to justify modules</span>
-            </div>
-
-            <div
-              onClick={() => setDrillDownState('uiComplexity')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    label="EST. COMPLEXITY"
-                    details="Execution Complexity Analysis"
-                    onIconClick={() => setDrillDownState('uiComplexity')}
-                  />
-                </div>
-                <p className="text-lg font-bold text-[#101828]">{avgComplexity}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-blue-600 transition-colors">Click to justify complexity</span>
-            </div>
-
-
-          </div>
-
-          <div className="mt-auto flex items-center justify-between pt-4 border-t border-[#EAECF0]">
-            <div className="flex items-center gap-2 text-emerald-600">
-              <CheckCircle size={16} />
-              <span className="text-xs font-bold">Generated Successfully</span>
-            </div>
-            <span className="text-xs text-[#98A2B3] font-medium">{currentDate}</span>
-          </div>
-        </div>
-
-        {/* API Test Case Summary */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#EAECF0] flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-[#101828] flex items-center gap-2">
-              <Shield size={20} className="text-emerald-500" />
-              API Test Case Summary
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-2">
-            <div
-              onClick={() => setDrillDownState('apiTests')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-emerald-300 hover:bg-emerald-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    theme="green"
-                    label="PLANNED API TEST CASE SCENARIOS"
-                    details="INFO - API Test Count"
-                    onIconClick={() => setDrillDownState('apiTestCountJustification')}
-                  />
-                </div>
-                <p className="text-3xl font-black text-emerald-500">{totalApi}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-emerald-600 transition-colors">Click to justify count</span>
-            </div>
-
-            <div
-              onClick={() => setDrillDownState('apiEndpoints')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-emerald-300 hover:bg-emerald-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    theme="green"
-                    label="PLANNED ENDPOINTS COVERED"
-                    details="API Endpoints Covered"
-                    onIconClick={() => setDrillDownState('apiEndpoints')}
-                  />
-                </div>
-                <p className="text-3xl font-black text-[#101828]">{endpoints}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-emerald-600 transition-colors">Click to justify endpoints</span>
-            </div>
-
-            <div
-              onClick={() => setDrillDownState('apiScope')}
-              className="p-4 bg-[#F9FAFB] rounded-2xl border border-[#EAECF0] hover:border-emerald-300 hover:bg-emerald-50/20 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Tooltip
-                    theme="green"
-                    label="EST. COVERAGE SCOPE"
-                    details="API Coverage Scope Analysis"
-                    onIconClick={() => setDrillDownState('apiScope')}
-                  />
-                </div>
-                <p className="text-lg font-bold text-[#101828]">{coverageScope}</p>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-2 font-medium group-hover:text-emerald-600 transition-colors">Click to justify scope</span>
-            </div>
-
-          </div>
-
-          {/* End of API Test Case Summary */}
-
-          <div className="mt-auto flex items-center justify-between pt-4 border-t border-[#EAECF0]">
-            <div className="flex items-center gap-2 text-emerald-600">
-              <CheckCircle size={16} />
-              <span className="text-xs font-bold">Generated Successfully</span>
-            </div>
-            <span className="text-xs text-[#98A2B3] font-medium">{currentDate}</span>
-          </div>
-        </div>
-
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* TEST INTELLIGENCE PANEL — PREMIUM REDESIGN                           */}
@@ -1486,31 +1388,81 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
           <div style={{ position: 'absolute', bottom: '-40px', left: '10%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           {/* Header row */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)' }} className="w-10 h-10 rounded-xl flex items-center justify-center">
-                <Brain size={20} className="text-indigo-300" />
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)' }} className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+                  <Brain size={20} className="text-indigo-300" />
+                </div>
+                <div>
+                  <div className="text-white font-extrabold text-base tracking-tight">Test case Summary</div>
+                </div>
               </div>
-              <div>
-                <div className="text-white font-extrabold text-base tracking-tight">AI Coverage Intelligence</div>
-                <div className="text-indigo-300 text-[11px] font-medium mt-0.5">Deep static analysis · {tooltips.aiExplanation?.filesAnalyzed || 15} files scanned · {modules} modules · {endpoints} endpoints</div>
+
+              <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }} className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
+                <div className="text-center">
+                  <div className="text-2xl font-black text-white">{totalUi + totalApi}</div>
+                  <div className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">Total Tests</div>
+                </div>
+                <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.15)' }} />
+                <div className="text-center">
+                  <div className="text-2xl font-black text-indigo-300">{totalUi}</div>
+                  <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">UI Tests</div>
+                </div>
+                <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.15)' }} />
+                <div className="text-center">
+                  <div className="text-2xl font-black text-emerald-300">{totalApi}</div>
+                  <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">API Tests</div>
+                </div>
               </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }} className="flex items-center gap-3 px-4 py-2 rounded-xl self-start sm:self-auto">
-              <div className="text-center">
-                <div className="text-2xl font-black text-white">{totalUi + totalApi}</div>
-                <div className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">Total Planned</div>
-              </div>
-              <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.15)' }} />
-              <div className="text-center">
-                <div className="text-2xl font-black text-indigo-300">{totalUi}</div>
-                <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">UI Tests</div>
-              </div>
-              <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.15)' }} />
-              <div className="text-center">
-                <div className="text-2xl font-black text-emerald-300">{totalApi}</div>
-                <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">API Tests</div>
-              </div>
+
+            {/* Enhanced & Resized Pie Chart Widget */}
+            <div className="flex items-center justify-end">
+              {(() => {
+                const pc = priorityCounts || { P0: 0, P1: 0, P2: 0 };
+                const totalP = Math.max(1, pc.P0 + pc.P1 + pc.P2);
+                const r = 58;
+                const strokeW = 20;
+                const c = 2 * Math.PI * r;
+                const p0len = (pc.P0 / totalP) * c;
+                const p1len = (pc.P1 / totalP) * c;
+                const p2len = Math.max(0, c - p0len - p1len);
+                const dash0 = `${p0len} ${c - p0len}`;
+                const dash1 = `${p1len} ${c - p1len}`;
+                const dash2 = `${p2len} ${c - p2len}`;
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} className="p-3.5 px-5 rounded-2xl flex items-center gap-6 shadow-inner">
+                    <svg width="160" height="160" viewBox="0 0 160 160" className="shadow-lg rounded-full bg-transparent shrink-0">
+                      <g transform="translate(80,80)">
+                        <circle r={r} fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeW} />
+                        <g transform="rotate(-90)">
+                          <circle r={r} fill="transparent" stroke="#ef4444" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash0} />
+                          <circle r={r} fill="transparent" stroke="#f59e0b" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash1} strokeDashoffset={`-${p0len}`} />
+                          <circle r={r} fill="transparent" stroke="#6366f1" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash2} strokeDashoffset={`-${p0len + p1len}`} />
+                        </g>
+                        <text x="0" y="5" textAnchor="middle" fontWeight="900" fontSize="28" fill="#ffffff">{totalUi + totalApi}</text>
+                        <text x="0" y="22" textAnchor="middle" fontWeight="700" fontSize="9" fill="#a5b4fc" letterSpacing="1">TESTS</text>
+                      </g>
+                    </svg>
+
+                    <div className="flex flex-col text-xs text-white leading-relaxed gap-2 shrink-0">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#ef4444] shadow-sm"></span> <span className="font-semibold text-slate-200">P0 Critical</span></span>
+                        <span className="font-extrabold text-white text-sm bg-rose-500/20 px-2 py-0.5 rounded border border-rose-500/30">{pc.P0}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f59e0b] shadow-sm"></span> <span className="font-semibold text-slate-200">P1 High</span></span>
+                        <span className="font-extrabold text-white text-sm bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">{pc.P1}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#6366f1] shadow-sm"></span> <span className="font-semibold text-slate-200">P2 Medium</span></span>
+                        <span className="font-extrabold text-white text-sm bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">{pc.P2}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -1546,7 +1498,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
           </div>
 
           {/* Bottom justification bullets */}
-          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} className="rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} className="rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { icon: '🔍', label: 'Repository Scope', value: `${tooltips.aiExplanation?.filesAnalyzed || 15} files · ${modules} modules · ${endpoints} endpoints` },
               { icon: '🚫', label: 'Redundancies Removed', value: 'Duplicate controllers, routes & config files excluded' },
@@ -1560,7 +1512,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
 
         {/* ── BOTTOM: PRIORITY CARDS GRID ── */}
@@ -1768,11 +1720,10 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                     {/* Table header */}
                     <div className="sticky top-0 z-10 grid grid-cols-12 gap-0 bg-slate-50 border-b border-slate-200 px-6 py-2.5">
                       <div className="col-span-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">#</div>
-                      <div className="col-span-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Scenario Name</div>
-                      <div className="col-span-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Type</div>
+                      <div className="col-span-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Scenario Name</div>
                       <div className="col-span-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Priority</div>
                       <div className="col-span-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Layer</div>
-                      <div className="col-span-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Client Value</div>
+                      <div className="col-span-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Client Value</div>
                     </div>
 
                     {/* Table rows */}
@@ -1786,13 +1737,14 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                           : 'bg-amber-50 text-amber-700 border border-amber-200';
                       const iconColor = isPos ? 'text-emerald-500' : isNeg ? 'text-rose-500' : 'text-amber-500';
 
-                      // ── Per-scenario priority: computed from tc.priority or heuristic ──
-                      const scenarioPriority = tc.priority ||
-                        (tc.name?.toLowerCase().includes('auth') || tc.name?.toLowerCase().includes('login') || tc.name?.toLowerCase().includes('security')
-                          ? 'P0'
-                          : isNeg || tc.name?.toLowerCase().includes('invalid') || tc.name?.toLowerCase().includes('empty')
-                            ? 'P1'
-                            : 'P2');
+                      // ── Per-scenario priority: aligned with parent category risk level ──
+                      const selCatName = (selectedCompositionCategory.name || '').toLowerCase();
+                      const catDefaultP = (selCatName.includes('auth') || selCatName.includes('security'))
+                        ? 'P0'
+                        : (selCatName.includes('ui') || selCatName.includes('workflow') || selCatName.includes('business') || selCatName.includes('rule'))
+                          ? 'P1'
+                          : 'P2';
+                      const scenarioPriority = tc.priority || catDefaultP;
                       const priorityBadgeStyle = scenarioPriority === 'P0'
                         ? 'bg-rose-50 text-rose-700 border-rose-200'
                         : scenarioPriority === 'P1'
@@ -1847,15 +1799,9 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                             <span className="text-[11px] font-extrabold text-slate-400 group-hover:text-indigo-500 transition-colors">{String(idx + 1).padStart(2, '0')}</span>
                           </div>
                           {/* Name */}
-                          <div className="col-span-3 flex items-start gap-1.5 pr-2">
+                          <div className="col-span-4 flex items-start gap-1.5 pr-2">
                             <CheckCircle size={13} className={`${iconColor} shrink-0 mt-0.5`} />
                             <span className="text-[11px] font-bold text-slate-800 leading-snug">{tc.name}</span>
-                          </div>
-                          {/* Type */}
-                          <div className="col-span-2 flex items-start">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wide uppercase ${typeStyle}`}>
-                              {tc.type || 'Functional'}
-                            </span>
                           </div>
                           {/* Priority — per-scenario badge */}
                           <div className="col-span-2 flex items-start gap-1">
@@ -1871,7 +1817,7 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                             </span>
                           </div>
                           {/* Client Value */}
-                          <div className="col-span-2">
+                          <div className="col-span-3">
                             <p className="text-[10px] text-slate-500 leading-relaxed">{value}</p>
                           </div>
                         </div>
