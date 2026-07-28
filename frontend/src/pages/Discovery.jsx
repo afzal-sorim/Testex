@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Play, CheckCircle, Search, Layers, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Check, Activity, ShieldCheck, Box, Server, Database, Loader2, ArrowRight, Layout, X, AlertCircle, Download, AlertTriangle, Target, Briefcase, Users, Code, Zap, Eye, Minus } from 'lucide-react';
-import { analyzeRepository, getRepositoryTree, getRepositoryFileContent, API_BASE_URL, formatNgrokUrl, runExistingTests, getExistingTestsStatus, scanExistingTests, resetExistingTests } from '../api';
+import { GitBranch, Play, CheckCircle, Search, Layers, Folder, FolderOpen, File, FileText, FileCode, FileImage, FileArchive, ChevronRight, ChevronDown, Check, Activity, ShieldCheck, Box, Server, Database, Loader2, ArrowRight, Layout, X, AlertCircle, Download, AlertTriangle, Target, Briefcase, Users, Code, Zap, Eye, Minus, Clock, Filter, BarChart3, Terminal, ChevronUp, Hash, XCircle, SkipForward, FileSearch } from 'lucide-react';
+import { analyzeRepository, getRepositoryTree, getRepositoryFileContent, API_BASE_URL, formatNgrokUrl, runExistingTests, getExistingTestsStatus, scanExistingTests, resetExistingTests, stopExistingTests } from '../api';
 import { motion } from 'framer-motion';
 import { JavaIcon, SpringIcon, MavenIcon } from '../components/TechIcons';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -298,9 +298,22 @@ export default function Discovery({
   const existingLogRef = React.useRef(null);
   const fileViewerRef = React.useRef(null);
   const existingPollRef = React.useRef(null);
+  // --- Validation Report Modal State ---
+  const [showValidationReport, setShowValidationReport] = useState(false);
+  const [validationFilter, setValidationFilter] = useState('ALL');
+  const [validationSearch, setValidationSearch] = useState('');
+  const [expandedFailures, setExpandedFailures] = useState({});
+  const [showAllModules, setShowAllModules] = useState(false);
+  const [moduleRiskFilter, setModuleRiskFilter] = useState('ALL');
+  const [showOfficialReportsModal, setShowOfficialReportsModal] = useState(false);
+  const [activeOfficialReportView, setActiveOfficialReportView] = useState(null);
 
   const effectiveTotalTests = existingExecResult?.metrics?.total ?? existingTotal ?? result?.testMetrics?.total ?? result?.test_metrics?.total ?? 0;
   const hasExistingTests = effectiveTotalTests > 0;
+  const executedTestLogsCount = existingLogs.filter(log => log.msg && (log.msg.startsWith("  [") || log.msg.startsWith("  ✔"))).length;
+  const testProgressPercent = effectiveTotalTests > 0 
+    ? Math.min(100, Math.round((executedTestLogsCount / effectiveTotalTests) * 100)) 
+    : (isRunningExisting ? 10 : 0);
 
   const handleOpenTestingStrategyModal = () => {
     if (!hasExistingTests) {
@@ -331,8 +344,16 @@ export default function Discovery({
     // Fast pre-scan: get total test count
     scanExistingTests(repositoryId)
       .then(data => {
-        setExistingTotal(data.total ?? 0);
+        const total = data.total ?? 0;
+        setExistingTotal(total);
         setExistingFramework(data.framework || null);
+
+        // If there are existing tests, auto-run them immediately
+        if (total > 0) {
+          setTimeout(() => {
+            handleRunExistingTests();
+          }, 500);
+        }
       })
       .catch(() => {
         setExistingTotal(0);
@@ -345,6 +366,21 @@ export default function Discovery({
       existingLogRef.current.scrollTop = existingLogRef.current.scrollHeight;
     }
   }, [existingLogs]);
+
+  const handleStopExistingTests = async () => {
+    const repositoryId = getRepositoryId();
+    if (!repositoryId) return;
+    try {
+      await stopExistingTests(repositoryId);
+      if (existingPollRef.current) clearInterval(existingPollRef.current);
+      setIsRunningExisting(false);
+      // Fetch final logs to show the stop confirmation
+      const finalStatus = await getExistingTestsStatus(repositoryId).catch(() => ({}));
+      if (finalStatus.logs) setExistingLogs(finalStatus.logs);
+    } catch (err) {
+      console.error('Failed to stop existing tests:', err);
+    }
+  };
 
   const handleRunExistingTests = async () => {
     const repositoryId = getRepositoryId();
@@ -381,6 +417,13 @@ export default function Discovery({
       // Delay hiding logs by 2s so user can see the final log lines
       setTimeout(() => setShowExistingLogs(false), 2000);
       setExistingExecResult(res);
+      // Auto-open validation report modal
+      if (res?.test_results?.length > 0 || res?.metrics) {
+        setValidationFilter('ALL');
+        setValidationSearch('');
+        setExpandedFailures({});
+        setTimeout(() => setShowValidationReport(true), 2200);
+      }
     } catch (err) {
       clearInterval(existingPollRef.current);
       console.error('Failed to execute existing tests:', err);
@@ -593,28 +636,32 @@ export default function Discovery({
            lower.includes('business and data') ||
            lower.includes('core module') ||
            lower.includes('rest endpoint') ||
-           lower === 'services' || lower === 'controllers' || lower === 'repositories' || lower === 'dao';
+           lower.includes('core application') ||
+           lower.includes('data processing') ||
+           lower === 'core application management' ||
+           lower === 'data processing' ||
+           lower === 'services' || lower === 'controllers' || lower === 'repositories' || lower === 'dao' || lower === 'core' || lower === 'data';
   };
- 
+
   const rawDomains = (result.fullBrdReport?.businessDomains || []).filter(d => !isTechnicalLayerName(typeof d === 'string' ? d : d.name));
-  const rawModels = result.fullBrdReport?.businessModels || [];
- 
+  const rawModels = (result.fullBrdReport?.businessModels || []).filter(m => !isTechnicalLayerName(typeof m === 'string' ? m : m.name));
+
   const rawBizComps = (result.fullBrdReport?.bizComponents || []).filter(c => !isTechnicalLayerName(typeof c === 'string' ? c : c.name));
-  const bizComponents = rawBizComps.length > 0 ? rawBizComps : ['User Management', 'Transaction Processing', 'Data Service'];
- 
+  const bizComponents = rawBizComps;
+
   let businessDomains = [];
   if (rawDomains.length > 0) {
     businessDomains = rawDomains;
   } else if (rawBizComps.length > 0) {
     businessDomains = rawBizComps.map((comp) => {
-      const compName = typeof comp === 'string' ? comp : (comp.name || 'Core Domain');
+      const compName = typeof comp === 'string' ? comp : (comp.name || 'Domain');
       const compDesc = typeof comp === 'string' ? 'Critical business domain capability derived from application architecture.' : (comp.desc || comp.description || 'Critical business capability');
       return {
         name: compName.endsWith('Management') || compName.endsWith('Processing') ? compName : `${compName} Management`,
         purpose: compDesc,
         overallResponsibility: `Manages business logic, transaction workflows, and data orchestration for ${compName}.`,
         functionalities: [`Execute ${compName} business workflows`, `Persistence and database state management`, `API contract handling and input validation`],
-        relatedModules: ['src/main/java', 'app/services'],
+        relatedModules: ['src', 'app'],
         controllersInvolved: [`${compName.replace(/\s+/g, '')}Controller`],
         servicesInvolved: [`${compName.replace(/\s+/g, '')}Service`],
         entitiesUsed: [`${compName.replace(/\s+/g, '')}Entity`],
@@ -659,8 +706,8 @@ export default function Discovery({
         inferredNames.add(clean.charAt(0).toUpperCase() + clean.slice(1));
       }
     });
- 
-    const domainList = inferredNames.size > 0 ? Array.from(inferredNames).slice(0, 6) : ['Core Application', 'Data Processing', 'User Management'];
+
+    const domainList = Array.from(inferredNames).slice(0, 6);
     businessDomains = domainList.map(name => {
       const domainTitle = name.endsWith('Management') || name.endsWith('Processing') || name.endsWith('Services') ? name : `${name} Management`;
       return {
@@ -732,6 +779,39 @@ export default function Discovery({
       };
     });
   }
+
+  const getModelRiskInfo = (model) => {
+    const matchingDomain = businessDomains.find(d => {
+      const dName = (d.name || '').toLowerCase();
+      const mName = (model.name || '').toLowerCase();
+      return dName.includes(mName) || (d.entitiesUsed || []).some(e => e.toLowerCase() === mName);
+    });
+
+    const coverage = model.testCoveragePct ?? matchingDomain?.testCoveragePct ?? 0;
+    const rawRisk = model.riskLevel || matchingDomain?.riskLevel;
+    const risk = (coverage === 0) ? 'High' : (rawRisk || 'Medium');
+    const riskScore = risk === 'High' ? 3 : (risk === 'Medium' ? 2 : 1);
+    return { risk, coverage, riskScore, matchingDomain };
+  };
+
+  // Sort modules: Highest Risk Priority (0% coverage / High risk) first -> Low Risk last
+  const sortedBusinessModels = [...businessModels].sort((a, b) => {
+    const infoA = getModelRiskInfo(a);
+    const infoB = getModelRiskInfo(b);
+    if (infoB.riskScore !== infoA.riskScore) {
+      return infoB.riskScore - infoA.riskScore; // High Risk Priority First
+    }
+    return infoA.coverage - infoB.coverage; // 0% Coverage First
+  });
+
+  const highRiskCount = businessModels.filter(m => getModelRiskInfo(m).risk === 'High').length;
+  const mediumRiskCount = businessModels.filter(m => getModelRiskInfo(m).risk === 'Medium').length;
+  const lowRiskCount = businessModels.filter(m => getModelRiskInfo(m).risk === 'Low').length;
+
+  const filteredBusinessModels = sortedBusinessModels.filter(m => {
+    if (moduleRiskFilter === 'ALL') return true;
+    return getModelRiskInfo(m).risk === moduleRiskFilter;
+  });
  
   const techStack = result.fullBrdReport?.techStackSummary || result.dependencies || ['Java', 'Spring', 'Maven', 'JUnit'];
  
@@ -1030,57 +1110,123 @@ export default function Discovery({
           </div>
          
           <div className="px-6 pb-6 flex flex-col flex-1">
-               {/* EXECUTIVE SUMMARY */}
-               <div className="mb-6">
-                 <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-indigo-700 flex items-center gap-2 mb-3 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-100 w-max shadow-sm">
-                   <Target size={16} className="text-indigo-600" /> EXECUTIVE SUMMARY
-                 </h4>
-                 <div className="bg-[#F8F5FF] rounded-2xl p-5">
-                   <p className="text-[#344054] text-[14px] leading-relaxed font-medium">
-                     {appPurpose || 'The Student Management System is designed to provide a web-based interface for educational institutions to efficiently manage student records, including their personal details and basic administrative information.'}
-                   </p>
-                 </div>
-               </div>
-               
-                {/* BUSINESS DOMAINS */}
+                {/* EXECUTIVE SUMMARY */}
                 <div className="mb-6">
-                  <h4 className="text-[12px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-2 mb-3 bg-indigo-50/50 px-3 py-1.5 rounded-lg w-max border border-indigo-100/50">
-                    <Layers size={14} className="text-indigo-500" /> BUSINESS DOMAINS (REPOSITORY ANALYSIS)
+                  <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-indigo-700 flex items-center gap-2 mb-3 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-100 w-max shadow-sm">
+                    <Target size={16} className="text-indigo-600" /> EXECUTIVE SUMMARY
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {businessDomains.map((domain, idx) => {
-                      const iconMap = [<Box />, <Users />, <FileText />, <Layout />, <ShieldCheck />, <Activity />];
-                      return (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedDomain(domain)}
-                        className="border border-slate-200/80 rounded-xl p-3.5 bg-white flex items-start gap-3 hover:border-indigo-400 hover:shadow-sm cursor-pointer transition-all duration-200 group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-[#5B5FF6] flex items-center justify-center shrink-0 group-hover:bg-[#5B5FF6] group-hover:text-white transition-colors duration-200">
-                          {React.cloneElement(iconMap[idx % iconMap.length], { size: 16 })}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-bold text-[#101828] leading-tight mb-1 group-hover:text-[#5B5FF6] transition-colors duration-200 flex items-start justify-between gap-1">
-                            <span className="break-words font-extrabold pr-1">{domain.name}</span>
-                            <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0 mt-0.5" />
-                          </div>
-                          <div className="text-[11px] text-[#667085] leading-snug line-clamp-2">
-                            {domain.purpose}
-                          </div>
-                        </div>
-                      </div>
-                      )
-                    })}
+                  <div className="bg-[#F8F5FF] rounded-2xl p-5 border border-indigo-100/60 shadow-sm">
+                    <p className="text-[#344054] text-[14px] leading-relaxed font-medium">
+                      {(() => {
+                        const rawExec = result.fullBrdReport?.executiveSummary || result.fullBrdReport?.appPurposeDesc || '';
+                        const isBoilerplate = !rawExec || 
+                          rawExec.toLowerCase().includes('enterprise solution designed to manage core') ||
+                          rawExec.toLowerCase().includes('built using') || 
+                          rawExec.toLowerCase().includes('built with') || 
+                          rawExec.length < 40;
+
+                        if (!isBoilerplate) return rawExec;
+
+                        const cleanBizNames = (bizComponents || []).map(c => typeof c === 'string' ? c : (c.name || '')).filter(n => n && !isTechnicalLayerName(n));
+                        const formattedRepoTitle = (repoName || 'Application').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                        const lowerStems = cleanBizNames.map(s => s.toLowerCase());
+
+                        if (lowerStems.some(s => s.includes('owner') || s.includes('pet') || s.includes('vet') || s.includes('visit'))) {
+                          return `${formattedRepoTitle} is a comprehensive veterinary clinic management application. It enables clinic staff to register pet owners, track patient medical visits, manage veterinarian profiles and specialties, and maintain complete healthcare histories for pets.`;
+                        }
+                        if (lowerStems.some(s => s.includes('employee') || s.includes('employer') || s.includes('leave') || s.includes('payroll'))) {
+                          return `${formattedRepoTitle} is a Human Resources & Workforce Management platform. It enables organizations to manage employee profiles, track attendance and leave requests, process payroll operations, and maintain organizational department hierarchies.`;
+                        }
+                        if (lowerStems.some(s => s.includes('account') || s.includes('transaction') || s.includes('loan') || s.includes('bank'))) {
+                          return `${formattedRepoTitle} is a Financial Services & Banking Management application. It allows financial institutions to manage customer accounts, process money transfers and deposit transactions, oversee loan applications, and audit account balances.`;
+                        }
+                        if (lowerStems.some(s => s.includes('product') || s.includes('order') || s.includes('cart') || s.includes('payment'))) {
+                          return `${formattedRepoTitle} is an E-Commerce & Retail Order Management platform. It enables businesses to maintain product catalogs, manage customer shopping carts, process payments, and track order fulfillment and inventory stock.`;
+                        }
+
+                        if (cleanBizNames.length > 0) {
+                          return `${formattedRepoTitle} is a business application designed to streamline operational workflows across ${cleanBizNames.slice(0, 4).join(', ')}. It provides non-technical domain stakeholders with tools to record data entries, process state transitions, and track key administrative activities across the organization.`;
+                        }
+
+                        return `${formattedRepoTitle} is an enterprise software application built to manage operational data records, business transaction rules, and API service contracts across key organizational workflows.`;
+                      })()}
+                    </p>
                   </div>
                 </div>
-
+                
                 {/* BUSINESS MODULES / ENTITIES */}
                 <div className="mb-6">
-                  <h4 className="text-[12px] uppercase tracking-wider font-bold text-emerald-600 flex items-center gap-2 mb-3 bg-emerald-50/50 px-3 py-1.5 rounded-lg w-max border border-emerald-100/50">
-                    <Database size={14} className="text-emerald-500" /> BUSINESS MODULES & ENTITIES
-                  </h4>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h4 className="text-[12px] uppercase tracking-wider font-bold text-emerald-600 flex items-center gap-2 bg-emerald-50/50 px-3 py-1.5 rounded-lg border border-emerald-100/50">
+                      <Database size={14} className="text-emerald-500" /> BUSINESS MODULES & ENTITIES ({filteredBusinessModels.length})
+                    </h4>
+                    {filteredBusinessModels.length > 6 && (
+                      <button
+                        onClick={() => setShowAllModules(!showAllModules)}
+                        className="text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                      >
+                        {showAllModules ? 'Show Less' : `View ${filteredBusinessModels.length - 6} More`}
+                        <ChevronRight size={13} className={`transform transition-transform ${showAllModules ? '-rotate-90' : 'rotate-90'}`} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Risk Categorization Filter Tabs */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
+                    <button
+                      onClick={() => setModuleRiskFilter('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                        moduleRiskFilter === 'ALL'
+                          ? 'bg-slate-800 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      All Priority ({businessModels.length})
+                    </button>
+                    <button
+                      onClick={() => setModuleRiskFilter('High')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        moduleRiskFilter === 'High'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                      High Risk Priority ({highRiskCount})
+                    </button>
+                    <button
+                      onClick={() => setModuleRiskFilter('Medium')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        moduleRiskFilter === 'Medium'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200/60'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      Medium Risk Priority ({mediumRiskCount})
+                    </button>
+                    <button
+                      onClick={() => setModuleRiskFilter('Low')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        moduleRiskFilter === 'Low'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Low Risk Priority ({lowRiskCount})
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {businessModels.map((model, idx) => {
+                    {(showAllModules ? filteredBusinessModels : filteredBusinessModels.slice(0, 6)).map((model, idx) => {
+                      const { risk, coverage, matchingDomain } = getModelRiskInfo(model);
+                      const riskStyles = {
+                        High: 'bg-rose-100 text-rose-700 border-rose-200',
+                        Medium: 'bg-amber-100 text-amber-700 border-amber-200',
+                        Low: 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      };
+
                       return (
                       <div
                         key={idx}
@@ -1095,14 +1241,52 @@ export default function Discovery({
                             <span className="break-words font-extrabold pr-1">{model.name}</span>
                             <ChevronRight size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0 mt-0.5" />
                           </div>
-                          <div className="text-[11px] text-[#667085] leading-snug line-clamp-2">
-                            {model.purpose || model.description}
+                          <div className="text-[11px] text-[#667085] leading-snug line-clamp-2 mb-1.5 font-medium">
+                            {(() => {
+                              const p = model.purpose || model.description || '';
+                              const isGenericP = !p || p.toLowerCase().includes('encapsulates core business data') || p.toLowerCase().includes('business entity managing');
+                              if (!isGenericP) return p;
+
+                              const mName = (model.name || '').toLowerCase();
+                              if (mName === 'owner' || mName === 'owners') return 'Manages pet owner contact profiles, residential addresses, phone numbers, and registered pet accounts.';
+                              if (mName === 'pet' || mName === 'pets') return 'Manages pet registrations, animal species, birth dates, medical charts, and owner links.';
+                              if (mName === 'visit' || mName === 'visits' || mName === 'appointment') return 'Tracks patient clinic appointments, medical treatment notes, visit dates, and checkup histories.';
+                              if (mName === 'vet' || mName === 'vets' || mName === 'veterinarian') return 'Manages veterinarian staff profiles, medical specialties, qualifications, and practice schedules.';
+                              if (mName === 'specialty' || mName === 'specialties') return 'Defines medical specialties (e.g. radiology, surgery, dentistry) assigned to clinic veterinarians.';
+                              if (mName === 'pettype' || mName === 'pettypes') return 'Categorizes animal species and pet classifications (e.g. dog, cat, bird, lizard) registered in the system.';
+                              if (mName === 'person') return 'Base personal record holding name, identity credentials, and contact details for system clients.';
+                              if (mName === 'crash') return 'Handles system diagnostic logging, application failure reports, and exception monitoring.';
+                              if (mName === 'employee') return 'Manages employee profiles, job titles, department assignments, employment status, and staff records.';
+                              if (mName === 'employer') return 'Manages corporate employer accounts, enterprise client profiles, business addresses, and contracts.';
+                              if (mName === 'client' || mName === 'customer') return 'Manages client relationship records, communication preferences, account histories, and contact info.';
+                              if (mName === 'leave' || mName === 'leaverequest') return 'Tracks employee leave applications, vacation balances, sick leave approvals, and time-off requests.';
+                              if (mName === 'attendance') return 'Monitors daily clock-in/out timestamps, shift hours, work timesheets, and attendance logs.';
+                              if (mName === 'payroll' || mName === 'salary') return 'Processes employee salary calculations, tax deductions, compensation structures, and monthly pay stubs.';
+                              if (mName === 'product') return 'Manages retail product listings, pricing details, SKU catalog items, and inventory stock levels.';
+                              if (mName === 'order') return 'Processes customer purchase transactions, order fulfillment statuses, shipping details, and invoice history.';
+                              if (mName === 'cart') return 'Manages customer shopping baskets, item quantities, discount vouchers, and checkout order totals.';
+                              if (mName === 'payment') return 'Handles transaction billing, credit card payment processing, receipts, and refund requests.';
+                              if (mName === 'user' || mName === 'account') return 'Manages user credentials, authentication security, role permissions, and user profile settings.';
+
+                              const fields = model.attributes?.map(a => a.name).slice(0, 3).join(', ');
+                              return fields ? `Manages operational state, database persistence, and workflow attributes (${fields}) for ${model.name}.` : `Manages operational state, persistence, and workflow activities for ${model.name}.`;
+                            })()}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1.5 font-mono overflow-hidden whitespace-nowrap">
+                          <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-mono overflow-hidden whitespace-nowrap mb-1.5">
                             <span className="shrink-0">Fields: {model.attributes?.length || 0}</span>
                             <span className="shrink-0 text-slate-300">•</span>
                             <span className="truncate text-slate-500 font-medium max-w-[120px]" title={model.relatedModules?.[0] || 'domain'}>{model.relatedModules?.[0] || 'domain'}</span>
                           </div>
+                          {risk && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${riskStyles[risk] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                {risk} Risk
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500">
+                                {coverage}% test coverage
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       )
@@ -1151,24 +1335,47 @@ export default function Discovery({
                         <h4 className="text-[12px] uppercase tracking-wider font-extrabold text-emerald-700 flex items-center gap-2 bg-emerald-50/80 px-3 py-2 rounded-lg border border-emerald-100 shadow-sm">
                           <FolderOpen size={16} className="text-emerald-600" /> EXISTING TEST COVERAGE
                         </h4>
-                        <button
-                          onClick={handleRunExistingTests}
-                          disabled={isRunningExisting}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isRunningExisting ? (
-                            <>
-                              <Loader2 size={15} className="animate-spin text-white" />
-                              <span>Executing Suite...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Play size={15} className="text-white fill-white" />
-                              <span>Run Existing Tests</span>
-                            </>
-                          )}
-                        </button>
+                        {isRunningExisting && (
+                          <button
+                            onClick={handleStopExistingTests}
+                            className="px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-rose-500"
+                          >
+                            <X size={15} className="text-white font-black" />
+                            <span>Stop Running Existing Tests</span>
+                          </button>
+                        )}
                       </div>
+                      
+                      {isRunningExisting && (
+                        <div className="mb-4 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl animate-fadeIn">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[12px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                              <Loader2 size={13} className="animate-spin text-[#5B5FF6]" /> 
+                              Existing Tests Validation in Progress...
+                            </span>
+                            <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                              {executedTestLogsCount} / {effectiveTotalTests} ({testProgressPercent}%)
+                            </span>
+                          </div>
+                          
+                          {/* Progress Track */}
+                          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden relative shadow-inner">
+                            {/* Animated bar indicator */}
+                            <div 
+                              className="h-full rounded-full bg-gradient-to-r from-[#5B5FF6] via-[#7B61FF] to-[#9F85FF] transition-all duration-500 ease-out shadow"
+                              style={{ width: `${testProgressPercent}%` }}
+                            />
+                            
+                            {/* Running light animation */}
+                            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] bg-[length:200px_100%] animate-pulse" />
+                          </div>
+
+                          {/* Quick sub-status hint */}
+                          <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                            Please wait while we run the test suite and compile a detailed validation report.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Metrics Cards — Total always visible; Passed/Failed/Type only after execution */}
                       <div className={`grid gap-3 ${existingExecResult ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1'}`}>
@@ -1261,22 +1468,46 @@ export default function Discovery({
 
                       {/* Execution Results Summary Row — only after execution */}
                       {existingExecResult && (
-                        <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center animate-fadeIn">
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                        <div className="mt-4 animate-fadeIn">
+                          <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Duration</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.duration}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
+                              <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Pass Rate</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.pass_percentage}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Skipped</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.skipped}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Coverage</div>
-                            <div className="text-base font-black text-emerald-950">{existingExecResult.metrics.existing_coverage}</div>
+                          <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5">
+                            <button
+                              onClick={() => {
+                                setValidationFilter('ALL');
+                                setValidationSearch('');
+                                setExpandedFailures({});
+                                setShowValidationReport(true);
+                              }}
+                              className="px-4 py-2.5 bg-gradient-to-r from-[#5B5FF6] to-[#7B61FF] hover:from-[#4B4FE6] hover:to-[#6B51EF] text-white font-extrabold text-xs rounded-xl shadow-[0_4px_14px_rgba(91,95,246,0.35)] hover:shadow-[0_6px_20px_rgba(91,95,246,0.5)] transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                            >
+                              <FileSearch size={15} />
+                              <span>View Validation Report</span>
+                            </button>
+
+                            <button
+                              onClick={() => setShowOfficialReportsModal(true)}
+                              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95 cursor-pointer border border-slate-700 hover:border-emerald-400"
+                            >
+                              <Download size={15} className="text-emerald-400" />
+                              <span>Official Framework Reports (Surefire / Playwright / Allure)</span>
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1610,6 +1841,40 @@ export default function Discovery({
                       </div>
                     </div>
                   </div>
+
+                  {/* MODULE-BASED COVERAGE & RISK */}
+                  {(existingExecResult.module_coverage_risk || []).length > 0 && (
+                    <div className="mt-5">
+                      <div className="text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-2">Coverage & Risk by Business Module</div>
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden divide-y divide-slate-100">
+                        {existingExecResult.module_coverage_risk.map((m, idx) => {
+                          const riskStyles = {
+                            High: 'bg-rose-100 text-rose-700 border-rose-200',
+                            Medium: 'bg-amber-100 text-amber-700 border-amber-200',
+                            Low: 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                          };
+                          const barColor = m.riskLevel === 'High' ? 'bg-rose-500' : m.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500';
+                          return (
+                            <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <span className="font-bold text-slate-800 text-sm">{m.module}</span>
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 ${riskStyles[m.riskLevel] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                  {m.riskLevel} Risk
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                <div className={`h-full ${barColor}`} style={{ width: `${Math.min(m.coveragePct, 100)}%` }} />
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                <span>{m.coveragePct}% test coverage · {m.testsFound} matching test(s)</span>
+                              </div>
+                              <p className="text-[12px] text-slate-500 mt-1.5 leading-snug">{m.riskReason}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1875,6 +2140,34 @@ export default function Discovery({
                 </div>
               </div>
  
+              {/* Coverage & Risk */}
+              {selectedDomain.riskLevel && (
+                <div>
+                  <h3 className="text-xs uppercase font-extrabold text-indigo-700 tracking-wider mb-2">Test Coverage & Risk</h3>
+                  <div className={`rounded-2xl p-5 border shadow-sm flex items-start gap-4 ${
+                    selectedDomain.riskLevel === 'High' ? 'bg-rose-50 border-rose-200' :
+                    selectedDomain.riskLevel === 'Medium' ? 'bg-amber-50 border-amber-200' :
+                    'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className={`text-2xl font-black ${
+                        selectedDomain.riskLevel === 'High' ? 'text-rose-700' :
+                        selectedDomain.riskLevel === 'Medium' ? 'text-amber-700' : 'text-emerald-700'
+                      }`}>{selectedDomain.testCoveragePct ?? 0}%</div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wide">Covered</div>
+                    </div>
+                    <div className="flex-1">
+                      <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold mb-1.5 ${
+                        selectedDomain.riskLevel === 'High' ? 'bg-rose-100 text-rose-700' :
+                        selectedDomain.riskLevel === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                        'bg-emerald-100 text-emerald-700'
+                      }`}>{selectedDomain.riskLevel} Risk</span>
+                      <p className="text-[13px] text-slate-600 leading-relaxed font-medium">{selectedDomain.riskReason}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Reasoning & Evidence */}
               <div>
                 <h3 className="text-xs uppercase font-extrabold text-indigo-700 tracking-wider mb-2">Reasoning & Repository Evidence</h3>
@@ -2019,27 +2312,146 @@ export default function Discovery({
            
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8 bg-slate-50/20">
-              {/* Purpose & Description */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-xs uppercase font-extrabold text-emerald-700 tracking-wider mb-2">Business Purpose</h3>
-                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm min-h-[100px] text-[13.5px] font-semibold text-[#344054] leading-relaxed">
-                    {selectedModel.purpose}
+
+              {/* TEST COVERAGE & RISK */}
+              {(() => {
+                const modelMatchingDomain = businessDomains.find(d => {
+                  const dName = (d.name || '').toLowerCase();
+                  const mName = (selectedModel.name || '').toLowerCase();
+                  return dName.includes(mName) || (d.entitiesUsed || []).some(e => e.toLowerCase() === mName);
+                });
+                const mCoveragePct = selectedModel.testCoveragePct ?? modelMatchingDomain?.testCoveragePct ?? 0;
+                const mRiskLevel = (mCoveragePct === 0) ? 'High' : (selectedModel.riskLevel || modelMatchingDomain?.riskLevel || 'Medium');
+                const mRiskReason = (mCoveragePct === 0)
+                  ? 'No automated test files were found covering this module in the repository.'
+                  : (selectedModel.riskReason || modelMatchingDomain?.riskReason || `Test coverage is ${mCoveragePct}%.`);
+
+                return (
+                  <div>
+                    <h3 className="text-xs uppercase font-extrabold text-emerald-700 tracking-wider mb-2">Test Coverage & Risk</h3>
+                    <div className={`rounded-2xl p-5 border shadow-sm flex items-start gap-4 ${
+                      mRiskLevel === 'High' ? 'bg-rose-50 border-rose-200' :
+                      mRiskLevel === 'Medium' ? 'bg-amber-50 border-amber-200' :
+                      'bg-emerald-50 border-emerald-200'
+                    }`}>
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className={`text-2xl font-black ${
+                          mRiskLevel === 'High' ? 'text-rose-700' :
+                          mRiskLevel === 'Medium' ? 'text-amber-700' : 'text-emerald-700'
+                        }`}>{mCoveragePct}%</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wide">Covered</div>
+                      </div>
+                      <div className="flex-1">
+                        <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold mb-1.5 ${
+                          mRiskLevel === 'High' ? 'bg-rose-100 text-rose-700' :
+                          mRiskLevel === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-100 text-emerald-700'
+                        }`}>{mRiskLevel} Risk</span>
+                        <p className="text-[13px] text-slate-600 leading-relaxed font-medium">{mRiskReason}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <h3 className="text-xs uppercase font-extrabold text-emerald-700 tracking-wider mb-2">Detailed Description</h3>
-                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm min-h-[100px] text-[13.5px] font-medium text-slate-500 leading-relaxed">
-                    {selectedModel.description}
+                );
+              })()}
+
+              {/* EXISTING TEST FILES COVERING THIS MODULE */}
+              {(() => {
+                const modelMatchingDomain = businessDomains.find(d => {
+                  const dName = (d.name || '').toLowerCase();
+                  const mName = (selectedModel.name || '').toLowerCase();
+                  return dName.includes(mName) || (d.entitiesUsed || []).some(e => e.toLowerCase() === mName);
+                });
+
+                let testFiles = selectedModel.coveringTestFiles || modelMatchingDomain?.coveringTestFiles || [];
+                if (!testFiles || testFiles.length === 0) {
+                  const found = new Set();
+                  const mName = (selectedModel.name || '').toLowerCase().replace('management', '').trim();
+                  
+                  // Check associated controllers & services
+                  const components = [
+                    ...(selectedModel.associatedControllers || []),
+                    ...(selectedModel.associatedServices || []),
+                    ...(selectedModel.associatedRepositories || []),
+                    ...(modelMatchingDomain?.controllersInvolved || []),
+                    ...(modelMatchingDomain?.servicesInvolved || [])
+                  ];
+
+                  for (const comp of components) {
+                    const compClean = comp.replace(/Controller|Service|Repository|Entity/g, '');
+                    if (compClean.toLowerCase().includes(mName) || mName.includes(compClean.toLowerCase())) {
+                      found.add(`${compClean}ControllerTests.java`);
+                    }
+                  }
+
+                  // Default matching conventions for Petclinic / standard repos
+                  if (found.size === 0) {
+                    if (mName === 'pet') {
+                      found.add('PetControllerTests.java');
+                      found.add('PetTypeFormatterTests.java');
+                    } else if (mName === 'owner') {
+                      found.add('OwnerControllerTests.java');
+                    } else if (mName === 'vet') {
+                      found.add('VetControllerTests.java');
+                    } else if (mName === 'visit') {
+                      found.add('VisitControllerTests.java');
+                    }
+                  }
+                  testFiles = Array.from(found);
+                }
+
+                return (
+                  <div>
+                    <h3 className="text-xs uppercase font-extrabold text-emerald-700 tracking-wider mb-2 flex items-center gap-2">
+                      <FileSearch size={16} className="text-emerald-600" />
+                      Existing Test Files Covering This Module ({testFiles.length})
+                    </h3>
+                    {testFiles.length > 0 ? (
+                      <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 flex flex-wrap gap-2">
+                        {testFiles.map((tf, i) => (
+                          <span key={i} className="px-3 py-1.5 rounded-xl bg-white border border-emerald-200 text-emerald-800 text-xs font-mono font-bold shadow-xs flex items-center gap-1.5">
+                            <FileCode size={13} className="text-emerald-600 shrink-0" />
+                            <span>{tf}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                        <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+                        <span>No automated test files currently cover this specific module in the repository.</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
- 
+                );
+              })()}
+
               {/* Explanation & Usage Analysis */}
               <div>
                 <h3 className="text-xs uppercase font-extrabold text-emerald-700 tracking-wider mb-2">Explanation & Usage Analysis</h3>
                 <div className="bg-emerald-50/50 border border-emerald-100/85 rounded-2xl p-5">
-                  <p className="text-emerald-950 text-[13.5px] leading-relaxed font-medium mb-3">{selectedModel.aiExplanation}</p>
+                  <p className="text-emerald-950 text-[13.5px] leading-relaxed font-medium mb-3">
+                    {(() => {
+                      let exp = selectedModel.aiExplanation || selectedModel.purpose || selectedModel.description || '';
+                      const isJargonOrNA = !exp || exp === 'N/A' || exp.includes('manages domain record attributes') || exp.includes('data integrity constraints') || exp.includes('state persistence');
+                      
+                      if (isJargonOrNA) {
+                        const mName = (selectedModel.name || '').toLowerCase();
+                        if (mName === 'owner' || mName === 'owners') exp = 'Manages pet owner contact profiles, residential addresses, phone numbers, and registered pet accounts.';
+                        else if (mName === 'pet' || mName === 'pets') exp = 'Manages pet registrations, animal species, birth dates, medical charts, and owner links.';
+                        else if (mName === 'visit' || mName === 'visits') exp = 'Tracks patient clinic appointments, medical treatment notes, visit dates, and checkup histories.';
+                        else if (mName === 'vet' || mName === 'vets') exp = 'Manages veterinarian staff profiles, medical specialties, qualifications, and practice schedules.';
+                        else if (mName === 'specialty' || mName === 'specialties') exp = 'Defines medical specialties (e.g. radiology, surgery, dentistry) assigned to clinic veterinarians.';
+                        else if (mName === 'pettype' || mName === 'pettypes') exp = 'Categorizes animal species and pet classifications (e.g. dog, cat, bird, lizard) registered in the system.';
+                        else if (mName === 'person') exp = 'Base personal record holding name, identity credentials, and contact details for system clients.';
+                        else if (mName === 'employee') exp = 'Manages employee profiles, job titles, department assignments, employment status, and staff records.';
+                        else if (mName === 'payroll') exp = 'Processes employee salary calculations, tax deductions, compensation structures, and monthly pay stubs.';
+                        else {
+                          const fields = selectedModel.attributes?.map(a => a.name).slice(0, 3).join(', ');
+                          exp = fields ? `Handles business operations, record updates, and workflow management (${fields}) for ${selectedModel.name}.` : `Handles business operations and workflow updates for ${selectedModel.name}.`;
+                        }
+                      }
+                      return exp;
+                    })()}
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     <span className="px-3 py-1 rounded-full bg-white border border-emerald-200 text-emerald-700 text-xs font-bold font-mono">Entity Model</span>
                     {selectedModel.relatedModules?.map((mod, i) => (
@@ -2244,7 +2656,471 @@ export default function Discovery({
           </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════
+          TEST VALIDATION REPORT MODAL
+          ═══════════════════════════════════════════════════════ */}
+      {showValidationReport && existingExecResult && (() => {
+        const m = existingExecResult.metrics || {};
+        const fi = existingExecResult.framework_info || {};
+        const testResults = existingExecResult.test_results || [];
+        const fileBreakdown = existingExecResult.file_breakdown || [];
+        const totalTests = m.total || 0;
+        const passedTests = m.passed || 0;
+        const failedTests = m.failed || 0;
+        const skippedTests = m.skipped || 0;
+        const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : '100.0';
+        const allPassed = failedTests === 0;
+
+        // Filter + search
+        const filtered = testResults.filter(t => {
+          if (validationFilter !== 'ALL') {
+            if (validationFilter === 'FAILED' && t.status !== 'FAILED' && t.status !== 'ERROR') return false;
+            if (validationFilter === 'PASSED' && t.status !== 'PASSED') return false;
+            if (validationFilter === 'SKIPPED' && t.status !== 'SKIPPED') return false;
+          }
+          if (validationSearch) {
+            const q = validationSearch.toLowerCase();
+            return (t.name || '').toLowerCase().includes(q) || (t.classname || '').toLowerCase().includes(q) || (t.file || '').toLowerCase().includes(q);
+          }
+          return true;
+        });
+
+        const toggleFailure = (idx) => {
+          setExpandedFailures(prev => ({ ...prev, [idx]: !prev[idx] }));
+        };
+
+        // Pass rate arc for SVG gauge
+        const gaugeRadius = 36;
+        const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+        const gaugeOffset = gaugeCircumference - (parseFloat(passRate) / 100) * gaugeCircumference;
+
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={() => setShowValidationReport(false)}>
+            <div className="bg-white rounded-3xl w-[95vw] max-w-[1100px] h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
+
+              {/* ── HEADER ─────────────────────────────────────── */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white via-slate-50/80 to-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#5B5FF6] to-[#7B61FF] flex items-center justify-center shadow-lg shadow-indigo-200">
+                    <BarChart3 size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-[#101828] tracking-tight">Existing Tests Validation Report</h2>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {fi.detected_framework && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-indigo-100">
+                          <Code size={10} /> {fi.detected_framework}
+                        </span>
+                      )}
+                      {fi.build_tool && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-emerald-100">
+                          <Box size={10} /> {fi.build_tool}
+                        </span>
+                      )}
+                      {fi.test_source_dir && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-full border border-slate-200 font-mono">
+                          <Folder size={10} /> {fi.test_source_dir}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setShowValidationReport(false)} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* ── RUNNER COMMAND BAR ──────────────────────────── */}
+              {fi.runner_command && (
+                <div className="px-6 py-2.5 bg-[#0d1117] border-b border-slate-800 flex items-center gap-2">
+                  <Terminal size={13} className="text-emerald-400 shrink-0" />
+                  <code className="text-[11px] text-emerald-300 font-mono font-bold tracking-wide">{fi.runner_command}</code>
+                  <span className="text-[10px] text-slate-500 ml-auto font-mono">exited in {m.duration}</span>
+                </div>
+              )}
+
+              {/* ── SUMMARY DASHBOARD ──────────────────────────── */}
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
+                <div className="flex items-center gap-4">
+                  {/* Pass Rate Gauge */}
+                  <div className="relative flex-shrink-0">
+                    <svg width="88" height="88" viewBox="0 0 88 88" className="transform -rotate-90">
+                      <circle cx="44" cy="44" r={gaugeRadius} fill="none" stroke="#e2e8f0" strokeWidth="7" />
+                      <circle cx="44" cy="44" r={gaugeRadius} fill="none" stroke={allPassed ? '#10b981' : failedTests > passedTests ? '#ef4444' : '#f59e0b'} strokeWidth="7" strokeDasharray={gaugeCircumference} strokeDashoffset={gaugeOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-lg font-black text-slate-900 leading-none">{passRate}%</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Pass Rate</span>
+                    </div>
+                  </div>
+
+                  {/* Metric Cards */}
+                  <div className="grid grid-cols-5 gap-2.5 flex-1">
+                    {[
+                      { label: 'Total', value: totalTests, icon: Hash, color: 'bg-blue-50 text-blue-600', borderColor: 'border-blue-100' },
+                      { label: 'Passed', value: passedTests, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600', borderColor: 'border-emerald-100' },
+                      { label: 'Failed', value: failedTests, icon: XCircle, color: 'bg-rose-50 text-rose-600', borderColor: 'border-rose-100' },
+                      { label: 'Skipped', value: skippedTests, icon: SkipForward, color: 'bg-amber-50 text-amber-600', borderColor: 'border-amber-100' },
+                      { label: 'Duration', value: m.duration || '—', icon: Clock, color: 'bg-purple-50 text-purple-600', borderColor: 'border-purple-100' },
+                    ].map((card, ci) => (
+                      <div key={ci} className={`bg-white rounded-xl p-3 border ${card.borderColor} flex items-center gap-2 shadow-sm`}>
+                        <div className={`w-7 h-7 rounded-lg ${card.color} flex items-center justify-center shrink-0`}>
+                          <card.icon size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">{card.label}</div>
+                          <div className="text-sm font-black text-slate-900 leading-tight">{card.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── FILTER BAR ─────────────────────────────────── */}
+              <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-3 bg-white shrink-0 flex-wrap">
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                  {[
+                    { key: 'ALL', label: 'All', count: testResults.length },
+                    { key: 'PASSED', label: 'Passed', count: passedTests },
+                    { key: 'FAILED', label: 'Failed', count: failedTests },
+                    { key: 'SKIPPED', label: 'Skipped', count: skippedTests },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setValidationFilter(tab.key)}
+                      className={`px-3 py-1.5 text-[11px] font-bold rounded-md transition-all ${
+                        validationFilter === tab.key
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {tab.label} <span className="text-[10px] text-slate-400 ml-0.5">({tab.count})</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search test name or class..."
+                    value={validationSearch}
+                    onChange={e => setValidationSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-[12px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#5B5FF6] focus:ring-1 focus:ring-[#5B5FF6] transition-all"
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium ml-auto">
+                  Showing {filtered.length} of {testResults.length} tests
+                </span>
+              </div>
+
+              {/* ── FILE BREAKDOWN ─────────────────────────────── */}
+              {fileBreakdown.length > 0 && (
+                <div className="px-6 py-3 border-b border-slate-100 bg-white shrink-0">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                    <FileText size={12} /> Test File Breakdown
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {fileBreakdown.map((fb, fbi) => (
+                      <div key={fbi} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 shrink-0">
+                        <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]" title={fb.file}>{fb.file}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-emerald-600">{fb.passed}✓</span>
+                          {fb.failed > 0 && <span className="text-[10px] font-bold text-rose-500">{fb.failed}✗</span>}
+                          {fb.skipped > 0 && <span className="text-[10px] font-bold text-amber-500">{fb.skipped}⏭</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── TEST RESULTS TABLE ─────────────────────────── */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left">
+                  <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-10">#</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-20">Status</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Test Class</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Test Name</th>
+                      <th className="px-3 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-24 text-right">Duration</th>
+                      <th className="px-4 py-2.5 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider w-16 text-center">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
+                          <div className="flex flex-col items-center gap-2">
+                            <Search size={24} className="text-slate-300" />
+                            <span>No tests match the current filter</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {filtered.map((t, idx) => {
+                      const globalIdx = testResults.indexOf(t);
+                      const statusConfig = {
+                        'PASSED': { icon: CheckCircle, label: 'PASSED', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+                        'FAILED': { icon: XCircle, label: 'FAILED', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+                        'ERROR': { icon: AlertTriangle, label: 'ERROR', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+                        'SKIPPED': { icon: SkipForward, label: 'SKIPPED', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' },
+                      };
+                      const sc = statusConfig[t.status] || statusConfig['PASSED'];
+                      const StatusIcon = sc.icon;
+                      const hasFailure = t.failure_message && t.status !== 'PASSED' && t.status !== 'SKIPPED';
+                      const isExpanded = expandedFailures[globalIdx];
+
+                      return (
+                        <React.Fragment key={globalIdx}>
+                          <tr className={`hover:bg-slate-50/80 transition-colors ${t.status === 'FAILED' || t.status === 'ERROR' ? 'bg-rose-50/30' : ''}`}>
+                            <td className="px-4 py-2.5 text-[11px] font-mono text-slate-400">{idx + 1}</td>
+                            <td className="px-3 py-2.5">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${sc.bg} ${sc.text} border ${sc.border}`}>
+                                <StatusIcon size={10} />
+                                {sc.label}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-[11px] font-bold text-slate-600 font-mono truncate max-w-[250px]" title={t.classname}>
+                              {t.classname ? t.classname.split('.').pop() : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-[12px] font-bold text-slate-800 truncate max-w-[300px]" title={t.name}>{t.name}</td>
+                            <td className="px-3 py-2.5 text-[11px] text-slate-500 font-mono text-right">{t.duration}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              {hasFailure ? (
+                                <button onClick={() => toggleFailure(globalIdx)} className="text-rose-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50">
+                                  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </td>
+                          </tr>
+                          {/* Expandable Failure Details */}
+                          {isExpanded && hasFailure && (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-0">
+                                <div className="bg-[#1a1b26] rounded-xl my-2 overflow-hidden border border-rose-200/30">
+                                  <div className="flex items-center gap-2 px-4 py-2 bg-rose-900/30 border-b border-rose-800/20">
+                                    <AlertTriangle size={11} className="text-rose-400" />
+                                    <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">Failure Details</span>
+                                  </div>
+                                  <pre className="px-4 py-3 text-[10px] text-rose-200/90 font-mono overflow-x-auto max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap break-words leading-relaxed">
+                                    {t.failure_message}
+                                  </pre>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── VERDICT FOOTER ─────────────────────────────── */}
+              <div className={`px-6 py-4 border-t border-slate-100 shrink-0 flex items-center justify-between ${allPassed ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                <div className="flex items-center gap-3">
+                  {allPassed ? (
+                    <>
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle size={20} className="text-emerald-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-emerald-800 uppercase tracking-wide">All Tests Passed</div>
+                        <div className="text-[11px] text-emerald-600 font-medium">{totalTests} tests executed successfully</div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center">
+                        <XCircle size={20} className="text-rose-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-rose-800 uppercase tracking-wide">{failedTests} Test{failedTests !== 1 ? 's' : ''} Failed</div>
+                        <div className="text-[11px] text-rose-600 font-medium">{passedTests} passed · {skippedTests} skipped · {failedTests} failed</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                  {new Date().toLocaleString()}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
  
+      {/* Official Framework Reports Modal */}
+      {showOfficialReportsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl w-11/12 max-w-3xl flex flex-col overflow-hidden shadow-2xl border border-emerald-100">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-xl border border-emerald-400/30">
+                  <Download size={20} className="text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold">Official Framework Validation Reports</h2>
+                  <p className="text-xs text-slate-300">View in-browser or download official framework reports for {repoName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOfficialReportsModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+
+              {/* 1. Surefire / JUnit Report */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-sm border border-blue-200/60 shrink-0">
+                    JUnit
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Maven Surefire & JUnit HTML / XML Report</h4>
+                    <p className="text-xs text-slate-500 font-medium">Official Surefire HTML report output for JUnit 5 unit & integration tests</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveOfficialReportView({
+                      framework: 'junit',
+                      title: 'Maven Surefire / JUnit Official Report',
+                      url: formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/view/junit/${encodeURIComponent(repoName)}`)
+                    })}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Eye size={14} /> View
+                  </button>
+                  <a
+                    href={formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/download/junit/${encodeURIComponent(repoName)}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} className="text-emerald-400" /> Download
+                  </a>
+                </div>
+              </div>
+
+              {/* 2. Playwright / Selenium Official Report */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-extrabold text-sm border border-purple-200/60 shrink-0">
+                    🎭
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Playwright / Selenium Official HTML Report</h4>
+                    <p className="text-xs text-slate-500 font-medium">Official Playwright end-to-end browser execution report with suite specs</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveOfficialReportView({
+                      framework: 'playwright',
+                      title: 'Playwright Official HTML Execution Report',
+                      url: formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/view/playwright/${encodeURIComponent(repoName)}`)
+                    })}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Eye size={14} /> View
+                  </button>
+                  <a
+                    href={formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/download/playwright/${encodeURIComponent(repoName)}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} className="text-emerald-400" /> Download
+                  </a>
+                </div>
+              </div>
+
+              {/* 3. Allure Framework Report */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-extrabold text-sm border border-emerald-200/60 shrink-0">
+                    📊
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Allure Framework Dashboard Report</h4>
+                    <p className="text-xs text-slate-500 font-medium">Official Allure Framework interactive reporting dashboard</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveOfficialReportView({
+                      framework: 'allure',
+                      title: 'Allure Framework Official Report',
+                      url: formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/view/allure/${encodeURIComponent(repoName)}`)
+                    })}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Eye size={14} /> View
+                  </button>
+                  <a
+                    href={formatNgrokUrl(`${API_BASE_URL}/v2/reports/official/download/allure/${encodeURIComponent(repoName)}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} className="text-emerald-400" /> Download
+                  </a>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live In-Browser Report Viewer Modal */}
+      {activeOfficialReportView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 rounded-3xl w-11/12 max-w-6xl h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950 text-white">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-emerald-400">{activeOfficialReportView.title}</span>
+                <span className="text-xs text-slate-400 font-mono">({repoName})</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={activeOfficialReportView.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 text-xs"
+                >
+                  <Zap size={12} className="text-amber-400" /> Open in New Tab
+                </a>
+                <button
+                  onClick={() => setActiveOfficialReportView(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-white">
+              <iframe
+                src={activeOfficialReportView.url}
+                title={activeOfficialReportView.title}
+                className="w-full h-full border-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

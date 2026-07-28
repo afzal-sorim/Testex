@@ -512,6 +512,7 @@ class AnalysisService:
             except Exception as e:
                 print(f"Error generating or parsing BRD JSON completely: {e}")
                 
+                from pathlib import Path
                 source_files = []
                 try:
                     for root, dirs, files in os.walk(clone_dir):
@@ -522,10 +523,10 @@ class AnalysisService:
                 except Exception as file_e:
                     print(f"Error collecting source files in fallback: {file_e}")
 
-                from app.brd_models import FullBrdReport, Capability, DataStoreInfo
+                from app.brd_models import FullBrdReport
                 brd_summary = FullBrdReport.model_construct(
                     appName=repo_url.split('/')[-1].replace('.git', ''),
-                    appPurposeDesc=f"This application is a {project_info.get('framework_type', 'Software')} project built using {project_info.get('build_tool', 'a standard build tool')}.",
+                    appPurposeDesc=f"The {repo_url.split('/')[-1].replace('.git', '').replace('-', ' ').title()} system is an enterprise {project_info.get('framework_type', project_type)} application designed to orchestrate operational workflows, data persistence, and API service interfaces.",
                     capabilities=[],
                     useCases=[],
                     sourceFiles=source_files,
@@ -536,14 +537,9 @@ class AnalysisService:
                         f"Build Tool: {project_info.get('build_tool')}",
                         f"Database: {project_info.get('database')}"
                     ],
-                    apiGroups=[
-                        __import__('app.brd_models', fromlist=['ApiGroup']).ApiGroup.model_construct(
-                            name="REST Endpoints",
-                            endpoints=[]
-                        )
-                    ],
+                    apiGroups=[],
                     primaryDataStores=[
-                        DataStoreInfo.model_construct(name=project_info.get('database', 'Database'), description="Main application data store")
+                        {"name": project_info.get('database', 'Database'), "description": "Main application data store"}
                     ],
                     modernizationContext=f"Project contains {len(deprecated_apis)} deprecated API usages and uses {project_type} {current_java_version if is_java else ''}. This baseline establishes functional testing boundaries for migration."
                 )
@@ -551,10 +547,35 @@ class AnalysisService:
             # Run repository domain and model scanner
             try:
                 from app.services.domain_model_scanner import RepositoryDomainModelScanner
-                scanned_data = RepositoryDomainModelScanner(clone_dir).scan()
-                scanned_domains = scanned_data.get("businessDomains", [])
-                scanned_models = scanned_data.get("businessModels", [])
+                domain_scanner = RepositoryDomainModelScanner(clone_dir)
+                scanned_data = domain_scanner.scan()
+                generic_names = {
+                    "core application management", "data processing", "user management",
+                    "core application", "data", "user", "core domain"
+                }
+                scanned_domains = [
+                    d for d in scanned_data.get("businessDomains", [])
+                    if getattr(d, "name", "").lower() not in generic_names
+                ] or scanned_data.get("businessDomains", [])
                 
+                scanned_models = [
+                    m for m in scanned_data.get("businessModels", [])
+                    if getattr(m, "name", "").lower() not in generic_names
+                ] or scanned_data.get("businessModels", [])
+                
+                # Cross-reference each detected module against the repository's real,
+                # detected test cases to produce genuine (not fabricated) coverage % and
+                # risk ratings — this is what powers the module-based coverage & risk view.
+                try:
+                    scanned_domains = domain_scanner.compute_module_risk(
+                        scanned_domains,
+                        test_details.get("testCases", []) if isinstance(test_details, dict) else [],
+                        deprecated_apis,
+                        models=scanned_models
+                    )
+                except Exception as risk_err:
+                    print(f"Module risk computation error: {risk_err}")
+
                 # Always populate business domains & business models with repository-derived scanned data
                 if hasattr(brd_summary, 'businessDomains'):
                     brd_summary.businessDomains = scanned_domains
@@ -563,6 +584,19 @@ class AnalysisService:
                     
                 if scanned_domains:
                     brd_summary.bizComponents = [d.name for d in scanned_domains]
+                    app_name_clean = repo_url.split('/')[-1].replace('.git', '') if repo_url else 'Application'
+                    
+                    from app.services.module_analysis.ai.module_validation_service import ModuleValidationService
+                    exec_summary = ModuleValidationService().generate_executive_summary(
+                        app_name=app_name_clean,
+                        module_stems=[d.name for d in scanned_domains],
+                        entities=[m.name for m in scanned_models],
+                        api_key=api_key,
+                        model_name=model_name
+                    )
+                    brd_summary.appPurposeDesc = exec_summary
+                    if hasattr(brd_summary, 'executiveSummary'):
+                        brd_summary.executiveSummary = exec_summary
             except Exception as scan_err:
                 print(f"Domain model scanner error: {scan_err}")
 
