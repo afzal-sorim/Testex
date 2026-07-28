@@ -1305,18 +1305,18 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
 
           suiteComposition = [
             {
+              name: 'Authentication & Security',
+              count: authCases.length,
+              evidence: authEvidence,
+              colorTheme: 'rose',
+              testCases: authCases
+            },
+            {
               name: 'UI Functional & Workflows',
               count: uiCases.length,
               evidence: uiEvidence,
               colorTheme: 'indigo',
               testCases: uiCases
-            },
-            {
-              name: 'API Contracts',
-              count: apiCases.length,
-              evidence: apiEvidence,
-              colorTheme: 'emerald',
-              testCases: apiCases
             },
             {
               name: 'Business Rule & Validation',
@@ -1326,15 +1326,25 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
               testCases: ruleCases
             },
             {
-              name: 'Authentication & Security',
-              count: authCases.length,
-              evidence: authEvidence,
-              colorTheme: 'rose',
-              testCases: authCases
+              name: 'API Contracts',
+              count: apiCases.length,
+              evidence: apiEvidence,
+              colorTheme: 'emerald',
+              testCases: apiCases
             }
           ].filter(c => c.count > 0);
         }
       }
+
+      // Sort suiteComposition strictly by priority order: P0 Critical -> P1 High -> P2 Medium
+      const getPriorityRank = (cat) => {
+        const name = (cat.name || '').toLowerCase();
+        if (name.includes('auth') || name.includes('security')) return 0; // P0 Critical
+        if (name.includes('ui') || name.includes('workflow') || name.includes('business') || name.includes('rule')) return 1; // P1 High
+        return 2; // P2 Medium
+      };
+      suiteComposition.sort((a, b) => getPriorityRank(a) - getPriorityRank(b));
+
       tooltips.suiteComposition = suiteComposition;
     }
 
@@ -1548,13 +1558,14 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
             {suiteComposition.map((cat, idx) => {
               const total = totalUi + totalApi || 1;
               const pct = Math.round((cat.count / total) * 100);
-              const barColors = [
-                { bar: 'from-indigo-500 to-violet-500', text: 'text-indigo-300', bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.35)' },
-                { bar: 'from-emerald-500 to-teal-400', text: 'text-emerald-300', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
-                { bar: 'from-amber-400 to-orange-400', text: 'text-amber-300', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
-                { bar: 'from-rose-500 to-pink-500', text: 'text-rose-300', bg: 'rgba(244,63,94,0.12)', border: 'rgba(244,63,94,0.3)' },
-              ];
-              const c = barColors[idx % barColors.length];
+              const getBarColor = (cat) => {
+                const name = (cat.name || '').toLowerCase();
+                if (name.includes('auth') || name.includes('security')) return { bar: 'from-rose-500 to-pink-500', text: 'text-rose-300' };
+                if (name.includes('ui') || name.includes('workflow')) return { bar: 'from-indigo-500 to-violet-500', text: 'text-indigo-300' };
+                if (name.includes('business') || name.includes('rule')) return { bar: 'from-amber-400 to-orange-400', text: 'text-amber-300' };
+                return { bar: 'from-emerald-500 to-teal-400', text: 'text-emerald-300' };
+              };
+              const c = getBarColor(cat);
               return (
                 <div key={idx} className="flex items-center gap-3 group cursor-pointer" onClick={() => setSelectedCompositionCategory(cat)}>
                   <span className="text-[11px] font-bold text-slate-300 w-36 truncate shrink-0" title={cat.name}>{cat.name}</span>
@@ -1572,23 +1583,6 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
               );
             })}
           </div>
-
-          {/* Bottom justification bullets */}
-          {/* <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} className="rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { icon: '🔍', label: 'Repository Scope', value: `${tooltips.aiExplanation?.filesAnalyzed || 15} files · ${modules} modules · ${endpoints} endpoints` },
-              { icon: '🚫', label: 'Redundancies Removed', value: 'Duplicate controllers, routes & config files excluded' },
-              { icon: '📐', label: 'Right-Sized Coverage', value: `Fewer = uncovered categories. More = redundant permutations.` },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="text-lg">{item.icon}</span>
-                <div>
-                  <div className="text-white text-[11px] font-bold">{item.label}</div>
-                  <div className="text-slate-400 text-[10px] leading-relaxed mt-0.5">{item.value}</div>
-                </div>
-              </div>
-            ))}
-          </div> */}
         </div>
 
         {/* ── BOTTOM: PRIORITY CARDS GRID ── */}
@@ -1626,13 +1620,20 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
                   ? 'bg-amber-500/80 text-white border-amber-300/40'
                   : 'bg-blue-500/80 text-white border-blue-300/40';
 
-              const themes = [
-                { gradient: 'from-indigo-500 to-violet-600', lightBg: 'bg-indigo-50', lightText: 'text-indigo-600', lightBorder: 'border-indigo-200', engine: '🎭 Playwright' },
-                { gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50', lightText: 'text-emerald-600', lightBorder: 'border-emerald-200', engine: '⚡ REST API' },
-                { gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50', lightText: 'text-amber-700', lightBorder: 'border-amber-200', engine: '🧪 Selenium' },
-                { gradient: 'from-rose-500 to-pink-600', lightBg: 'bg-rose-50', lightText: 'text-rose-600', lightBorder: 'border-rose-200', engine: '🔒 E2E Security' },
-              ];
-              const t = themes[idx % themes.length];
+              const getCardTheme = (cat) => {
+                const name = (cat.name || '').toLowerCase();
+                if (name.includes('auth') || name.includes('security')) {
+                  return { gradient: 'from-rose-500 to-pink-600', lightBg: 'bg-rose-50', lightText: 'text-rose-600', lightBorder: 'border-rose-200', engine: '🔒 E2E Security' };
+                }
+                if (name.includes('ui') || name.includes('workflow')) {
+                  return { gradient: 'from-indigo-500 to-violet-600', lightBg: 'bg-indigo-50', lightText: 'text-indigo-600', lightBorder: 'border-indigo-200', engine: '🎭 Playwright' };
+                }
+                if (name.includes('business') || name.includes('rule')) {
+                  return { gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50', lightText: 'text-amber-700', lightBorder: 'border-amber-200', engine: '🧪 Selenium' };
+                }
+                return { gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50', lightText: 'text-emerald-600', lightBorder: 'border-emerald-200', engine: '⚡ REST API' };
+              };
+              const t = getCardTheme(cat);
               const total = totalUi + totalApi || 1;
               const pct = Math.round((cat.count / total) * 100);
 
