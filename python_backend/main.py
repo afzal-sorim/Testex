@@ -51,8 +51,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 from app.routers import intelligence_api
 from app.routers import report_api
 from app.routers import export_api
+from app.routers import auth
 
 app.include_router(api.router, prefix="/api")
+app.include_router(auth.router)
 app.include_router(api_keys.router)
 app.include_router(technical_documents.router)
 app.include_router(intelligence_api.router)

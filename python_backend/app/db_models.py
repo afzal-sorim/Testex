@@ -20,6 +20,18 @@ class Repository(Base):
 
     analyses = relationship("Analysis", back_populates="repository", cascade="all, delete-orphan")
 
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    username = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    hashed_password = Column(String, nullable=True)
+    auth_provider = Column(String, default="local") # local, google, github, microsoft
+    provider_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Analysis(Base):
     __tablename__ = "analyses"
     

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Mail, Lock, Eye, EyeOff, 
   Code2, BrainCircuit, Rocket, Shield, PlayCircle, FileText, 
   Settings, Zap, BarChart3, Database, ShieldCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useGoogleLogin } from '@react-oauth/google';
+import { loginUser, registerUser, forgotPassword, resetPassword, googleLogin, githubLogin } from '../api';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -12,29 +14,120 @@ export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [authView, setAuthView] = useState('login'); // login, signup, forgot, reset
+  const [resetToken, setResetToken] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Check for password reset token
+    const resetTokenParam = params.get('resetToken');
+    if (resetTokenParam) {
+      setResetToken(resetTokenParam);
+      setAuthView('reset');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    // Check for GitHub OAuth code
+    const githubCode = params.get('code');
+    if (githubCode) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleGithubLogin(githubCode);
+    }
+  }, []);
+
+  const { instance } = useMsal();
+
+  const handleGithubLogin = async (code) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const data = await githubLogin(code);
+      localStorage.setItem('prova_auth_token', data.access_token);
+      onLogin(data.user);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'GitHub Authentication failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubRedirect = () => {
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+    if (!clientId) {
+      setError("GitHub Client ID is missing in environment variables.");
+      return;
+    }
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=user:email`;
+    window.location.href = redirectUrl;
+  };
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      // Send Google token to backend
+      const data = await googleLogin(tokenResponse.access_token || tokenResponse.credential);
+      localStorage.setItem('prova_auth_token', data.access_token);
+      onLogin(data.user);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Google Authentication failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => setError('Google Sign-In was unsuccessful. Please try again.')
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     
-    if (!username || !password) {
-      setError('Please fill in both fields');
+    if (authView === 'login' || authView === 'signup') {
+      if (!username || !password) {
+        setError('Please fill in both fields');
+        return;
+      }
+    } else if (authView === 'forgot' && !username) {
+      setError('Please enter your email');
+      return;
+    } else if (authView === 'reset' && !password) {
+      setError('Please enter a new password');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate an API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Dynamic validation (e.g. accepts any non-empty user with length > 0)
-      if (password.length >= 4) {
-        onLogin(username);
-      } else {
-        setError('Password must be at least 4 characters long');
+    try {
+      if (authView === 'signup') {
+        const data = await registerUser({ email: username, password });
+        localStorage.setItem('prova_auth_token', data.access_token);
+        onLogin(data.user);
+      } else if (authView === 'login') {
+        const data = await loginUser({ email: username, password });
+        localStorage.setItem('prova_auth_token', data.access_token);
+        onLogin(data.user);
+      } else if (authView === 'forgot') {
+        const data = await forgotPassword(username);
+        setSuccessMessage(data.message || 'If this email is registered, a password reset link has been sent.');
+        // We stay on the 'forgot' view so the user can read the message
+      } else if (authView === 'reset') {
+        const data = await resetPassword(resetToken, password);
+        setSuccessMessage('Password reset successfully! Please login.');
+        setAuthView('login');
+        setPassword('');
       }
-    }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Operation failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -208,58 +301,76 @@ export default function Login({ onLogin }) {
         >
           <div className="text-center mb-8">
             <h2 className="text-2xl font-extrabold text-[#101828] mb-2">
-              {isSignUp ? "Create your account" : "Welcome back!"}
+              {authView === 'signup' ? "Create your account" : 
+               authView === 'forgot' ? "Forgot Password" :
+               authView === 'reset' ? "Set New Password" : "Welcome back!"}
             </h2>
             <p className="text-[#667085] text-sm">
-              {isSignUp ? "Sign up to get started with PROVA" : "Login to your PROVA account"}
+              {authView === 'signup' ? "Sign up to get started with PROVA" : 
+               authView === 'forgot' ? "Enter your email to receive a reset link" :
+               authView === 'reset' ? "Enter a new secure password" : "Login to your PROVA account"}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-[#344054] mb-1.5">Email Address / Username</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-[#98A2B3]" />
+            {authView !== 'reset' && (
+              <div>
+                <label className="block text-xs font-bold text-[#344054] mb-1.5">Email Address / Username</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail size={18} className="text-[#98A2B3]" />
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-[#D0D5DD] rounded-xl text-sm placeholder-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#5B5FF6]/30 focus:border-[#5B5FF6] transition-all bg-white"
+                    placeholder="Enter your email or username"
+                    required
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-[#D0D5DD] rounded-xl text-sm placeholder-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#5B5FF6]/30 focus:border-[#5B5FF6] transition-all bg-white"
-                  placeholder="Enter your email or username"
-                  required
-                />
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-[#344054] mb-1.5">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-[#98A2B3]" />
+            {authView !== 'forgot' && (
+              <div>
+                <label className="block text-xs font-bold text-[#344054] mb-1.5">
+                  {authView === 'reset' ? 'New Password' : 'Password'}
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock size={18} className="text-[#98A2B3]" />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-3 border border-[#D0D5DD] rounded-xl text-sm placeholder-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#5B5FF6]/30 focus:border-[#5B5FF6] transition-all bg-white"
+                    placeholder={authView === 'reset' ? "Enter a new secure password" : "Enter your password"}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#98A2B3] hover:text-[#667085]"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-3 border border-[#D0D5DD] rounded-xl text-sm placeholder-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#5B5FF6]/30 focus:border-[#5B5FF6] transition-all bg-white"
-                  placeholder="Enter your password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#98A2B3] hover:text-[#667085]"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-end pt-1">
-              <a href="#" className="text-xs font-bold text-[#5B5FF6] hover:text-[#4F46E5]">Forgot Password?</a>
-            </div>
+            {authView === 'login' && (
+              <div className="flex justify-end pt-1">
+                <button type="button" onClick={() => { setAuthView('forgot'); setError(''); setSuccessMessage(''); }} className="text-xs font-bold text-[#5B5FF6] hover:text-[#4F46E5]">Forgot Password?</button>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="text-xs text-[#027A48] bg-[#ECFDF3] p-2 rounded-lg text-center font-medium">
+                {successMessage}
+              </div>
+            )}
 
             {error && (
               <div className="text-xs text-[#F04438] bg-[#FEF3F2] p-2 rounded-lg text-center font-medium">
@@ -278,10 +389,14 @@ export default function Login({ onLogin }) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {isSignUp ? "Signing up..." : "Logging in..."}
+                  {authView === 'signup' ? "Signing up..." : 
+                   authView === 'forgot' ? "Sending..." :
+                   authView === 'reset' ? "Resetting..." : "Logging in..."}
                 </>
               ) : (
-                isSignUp ? "Sign Up" : "Log In"
+                authView === 'signup' ? "Sign Up" : 
+                authView === 'forgot' ? "Send Reset Link" :
+                authView === 'reset' ? "Set Password" : "Log In"
               )}
             </button>
           </form>
@@ -298,13 +413,21 @@ export default function Login({ onLogin }) {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <button type="button" className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm">
+            <button 
+              type="button" 
+              onClick={handleGithubRedirect}
+              className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm"
+            >
               <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
               </svg>
               <span className="ml-2 text-xs font-bold text-[#344054]">GitHub</span>
             </button>
-            <button type="button" className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm">
+            <button 
+              type="button" 
+              onClick={() => loginWithGoogle()}
+              className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm"
+            >
               <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -326,13 +449,17 @@ export default function Login({ onLogin }) {
 
           <div className="mt-8 text-center">
             <p className="text-xs text-[#667085]">
-              {isSignUp ? "Already have an account? " : "New to PROVA? "}
+              {authView === 'login' ? "New to PROVA? " : "Already have an account? "}
               <button 
                 type="button" 
-                onClick={() => { setIsSignUp(!isSignUp); setError(''); }} 
+                onClick={() => { 
+                  setAuthView(authView === 'login' ? 'signup' : 'login'); 
+                  setError(''); 
+                  setSuccessMessage('');
+                }} 
                 className="font-bold text-[#5B5FF6] hover:text-[#4F46E5]"
               >
-                {isSignUp ? "Log In" : "Create an account"}
+                {authView === 'login' ? "Create an account" : "Log In"}
               </button>
             </p>
           </div>
