@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 *.bak
 .env
+prova.db
+*.db
+workspace/
+reports/
+allure-results/
+allure-report/
