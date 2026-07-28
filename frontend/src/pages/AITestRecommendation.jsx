@@ -1422,42 +1422,118 @@ export default function AITestRecommendation({ setActiveTab, repoUrl, workflowSt
               {(() => {
                 const pc = priorityCounts || { P0: 0, P1: 0, P2: 0 };
                 const totalP = Math.max(1, pc.P0 + pc.P1 + pc.P2);
+                const p0Pct = Math.round((pc.P0 / totalP) * 100);
+                const p1Pct = Math.round((pc.P1 / totalP) * 100);
+                const p2Pct = Math.max(0, 100 - p0Pct - p1Pct);
+
                 const r = 58;
-                const strokeW = 20;
+                const strokeW = 18;
                 const c = 2 * Math.PI * r;
-                const p0len = (pc.P0 / totalP) * c;
-                const p1len = (pc.P1 / totalP) * c;
-                const p2len = Math.max(0, c - p0len - p1len);
+
+                // Gap spacing between donut slices so they don't bleed/overlap
+                const gap = totalP > 1 ? 4 : 0;
+                const p0len = pc.P0 > 0 ? Math.max(2, (pc.P0 / totalP) * c - gap) : 0;
+                const p1len = pc.P1 > 0 ? Math.max(2, (pc.P1 / totalP) * c - gap) : 0;
+                const p2len = pc.P2 > 0 ? Math.max(2, (pc.P2 / totalP) * c - gap) : 0;
+
                 const dash0 = `${p0len} ${c - p0len}`;
                 const dash1 = `${p1len} ${c - p1len}`;
                 const dash2 = `${p2len} ${c - p2len}`;
-                return (
-                  <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} className="p-3.5 px-5 rounded-2xl flex items-center gap-6 shadow-inner">
-                    <svg width="160" height="160" viewBox="0 0 160 160" className="shadow-lg rounded-full bg-transparent shrink-0">
-                      <g transform="translate(80,80)">
-                        <circle r={r} fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeW} />
-                        <g transform="rotate(-90)">
-                          <circle r={r} fill="transparent" stroke="#ef4444" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash0} />
-                          <circle r={r} fill="transparent" stroke="#f59e0b" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash1} strokeDashoffset={`-${p0len}`} />
-                          <circle r={r} fill="transparent" stroke="#6366f1" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash2} strokeDashoffset={`-${p0len + p1len}`} />
-                        </g>
-                        <text x="0" y="5" textAnchor="middle" fontWeight="900" fontSize="28" fill="#ffffff">{totalUi + totalApi}</text>
-                        <text x="0" y="22" textAnchor="middle" fontWeight="700" fontSize="9" fill="#a5b4fc" letterSpacing="1">TESTS</text>
-                      </g>
-                    </svg>
 
-                    <div className="flex flex-col text-xs text-white leading-relaxed gap-2 shrink-0">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#ef4444] shadow-sm"></span> <span className="font-semibold text-slate-200">P0 Critical</span></span>
-                        <span className="font-extrabold text-white text-sm bg-rose-500/20 px-2 py-0.5 rounded border border-rose-500/30">{pc.P0}</span>
+                const offset0 = 0;
+                const offset1 = -(p0len + gap);
+                const offset2 = -(p0len + gap + p1len + gap);
+
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }} className="p-4 px-6 rounded-2xl flex items-center gap-7 shadow-2xl relative overflow-hidden group">
+                    {/* Ambient subtle glow background */}
+                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 50%, rgba(99,102,241,0.15), transparent 70%)', pointerEvents: 'none' }} />
+
+                    <div className="relative flex items-center justify-center">
+                      <svg width="165" height="165" viewBox="0 0 165 165" className="shrink-0 transition-transform duration-500 group-hover:scale-105">
+                        <defs>
+                          <linearGradient id="p0Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#ff4d4d" />
+                            <stop offset="100%" stopColor="#f43f5e" />
+                          </linearGradient>
+                          <linearGradient id="p1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#f59e0b" />
+                          </linearGradient>
+                          <linearGradient id="p2Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#818cf8" />
+                            <stop offset="100%" stopColor="#4f46e5" />
+                          </linearGradient>
+                          <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                        </defs>
+
+                        <g transform="translate(82.5, 82.5)">
+                          {/* Outer Track */}
+                          <circle r={r} fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeW} />
+
+                          {/* Slices with clean gaps & gradients */}
+                          <g transform="rotate(-90)" filter="url(#arcGlow)">
+                            {pc.P0 > 0 && (
+                              <circle r={r} fill="transparent" stroke="url(#p0Grad)" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash0} strokeDashoffset={offset0} />
+                            )}
+                            {pc.P1 > 0 && (
+                              <circle r={r} fill="transparent" stroke="url(#p1Grad)" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash1} strokeDashoffset={offset1} />
+                            )}
+                            {pc.P2 > 0 && (
+                              <circle r={r} fill="transparent" stroke="url(#p2Grad)" strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={dash2} strokeDashoffset={offset2} />
+                            )}
+                          </g>
+
+                          {/* Inner Decorative Ring */}
+                          <circle r={r - strokeW / 2 - 4} fill="rgba(0,0,0,0.25)" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+
+                          {/* Center Text */}
+                          <text x="0" y="4" textAnchor="middle" fontWeight="900" fontSize="30" fill="#ffffff" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                            {totalUi + totalApi}
+                          </text>
+                          <text x="0" y="21" textAnchor="middle" fontWeight="800" fontSize="8.5" fill="#a5b4fc" letterSpacing="1.5">
+                            TESTS
+                          </text>
+                        </g>
+                      </svg>
+                    </div>
+
+                    {/* Detailed Legend */}
+                    <div className="flex flex-col text-xs text-white gap-2.5 shrink-0 z-10">
+                      <div className="flex items-center justify-between gap-5 group/item">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-gradient-to-r from-rose-500 to-red-500 shadow-md shadow-rose-500/30"></span>
+                          <span className="font-semibold text-slate-200 text-xs">P0 Critical</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-rose-300/80">{p0Pct}%</span>
+                          <span className="font-extrabold text-white text-xs bg-rose-500/20 px-2 py-0.5 rounded-md border border-rose-500/30 min-w-[22px] text-center">{pc.P0}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f59e0b] shadow-sm"></span> <span className="font-semibold text-slate-200">P1 High</span></span>
-                        <span className="font-extrabold text-white text-sm bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">{pc.P1}</span>
+
+                      <div className="flex items-center justify-between gap-5 group/item">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-md shadow-amber-500/30"></span>
+                          <span className="font-semibold text-slate-200 text-xs">P1 High</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-amber-300/80">{p1Pct}%</span>
+                          <span className="font-extrabold text-white text-xs bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 min-w-[22px] text-center">{pc.P1}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#6366f1] shadow-sm"></span> <span className="font-semibold text-slate-200">P2 Medium</span></span>
-                        <span className="font-extrabold text-white text-sm bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">{pc.P2}</span>
+
+                      <div className="flex items-center justify-between gap-5 group/item">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600 shadow-md shadow-indigo-500/30"></span>
+                          <span className="font-semibold text-slate-200 text-xs">P2 Medium</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-indigo-300/80">{p2Pct}%</span>
+                          <span className="font-extrabold text-white text-xs bg-indigo-500/20 px-2 py-0.5 rounded-md border border-indigo-500/30 min-w-[22px] text-center">{pc.P2}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
