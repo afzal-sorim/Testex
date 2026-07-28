@@ -148,18 +148,8 @@ export const getActiveProvider = async () => {
   return response.data;
 };
 
-export const oauthLogin = async (email, provider, providerId = null) => {
-  const response = await apiClient.post('/auth/oauth', { email, provider, provider_id: providerId });
-  return response.data;
-};
-
-export const googleLogin = async (token) => {
-  const response = await apiClient.post('/auth/google', { token });
-  return response.data;
-};
-
-export const microsoftLogin = async (token) => {
-  const response = await apiClient.post('/auth/microsoft', { token });
+export const setActiveProvider = async (provider) => {
+  const response = await apiClient.put('/keys/active-provider', { provider });
   return response.data;
 };
 
@@ -315,6 +305,60 @@ export const getApiTestCasesData = async (repoName) => {
 
 export const getSummaryMetadata = async (repoName) => {
   const response = await apiClient.get(`/reports/summary-metadata/${encodeURIComponent(repoName)}`);
+  return response.data;
+};
+
+
+
+// --- Auth Endpoints ---
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('prova_auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export const loginUser = async (username, password) => {
+  const response = await apiClient.post('/auth/login', { username, password });
+  return response.data;
+};
+
+export const registerUser = async (username, password) => {
+  const response = await apiClient.post('/auth/register', { username, password });
+  return response.data;
+};
+
+export const oauthLogin = async (email, provider, providerId = null) => {
+  const response = await apiClient.post('/auth/oauth', { email, provider, provider_id: providerId });
+  return response.data;
+};
+
+export const googleLogin = async (token) => {
+  const response = await apiClient.post('/auth/google', { token });
+  return response.data;
+};
+
+export const microsoftLogin = async (token) => {
+  const response = await apiClient.post('/auth/microsoft', { token });
+  return response.data;
+};
+
+export const githubLogin = async (code) => {
+  const response = await apiClient.post('/auth/github', { code });
+  return response.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const response = await apiClient.post('/auth/reset-password', { token, new_password: newPassword });
+  return response.data;
+};
+
+export const forgotPassword = async (email) => {
+  const response = await apiClient.post('/auth/forgot-password', { email });
   return response.data;
 };
 

@@ -5,10 +5,12 @@ import {
   Settings, Zap, BarChart3, Database, ShieldCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useMsal } from '@azure/msal-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { loginUser, registerUser, forgotPassword, resetPassword, googleLogin, githubLogin } from '../api';
+import { loginUser, registerUser, forgotPassword, resetPassword, googleLogin, githubLogin, microsoftLogin } from '../api';
 
 export default function Login({ onLogin }) {
+  const { instance } = useMsal();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -37,8 +39,6 @@ export default function Login({ onLogin }) {
       handleGithubLogin(githubCode);
     }
   }, []);
-
-  const { instance } = useMsal();
 
   const handleGithubLogin = async (code) => {
     setIsLoading(true);
@@ -83,6 +83,31 @@ export default function Login({ onLogin }) {
     onSuccess: handleGoogleSuccess,
     onError: () => setError('Google Sign-In was unsuccessful. Please try again.')
   });
+
+  const handleMicrosoftLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const loginRequest = {
+        scopes: ["user.read"]
+      };
+      const response = await instance.loginPopup(loginRequest);
+      const data = await microsoftLogin(response.accessToken);
+      localStorage.setItem('auth_token', data.access_token);
+      onLogin(data.user);
+    } catch (err) {
+      console.error(err);
+      if (err.errorCode === 'interaction_in_progress' || err.message.includes('interaction_in_progress')) {
+        setError('A Microsoft login is already in progress. Please refresh the page and try again.');
+      } else if (err.errorCode === 'user_cancelled') {
+        setError('');
+      } else {
+        setError(err.response?.data?.detail || err.message || 'Microsoft Authentication failed');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -436,7 +461,11 @@ export default function Login({ onLogin }) {
               </svg>
               <span className="ml-2 text-xs font-bold text-[#344054]">Google</span>
             </button>
-            <button type="button" className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm">
+            <button 
+              type="button" 
+              onClick={handleMicrosoftLogin}
+              className="flex justify-center items-center py-2.5 px-4 border border-[#D0D5DD] rounded-xl hover:bg-slate-50 transition-colors bg-white shadow-sm"
+            >
               <svg className="w-[18px] h-[18px]" viewBox="0 0 21 21">
                 <path fill="#f25022" d="M1 1h9v9H1z"/>
                 <path fill="#00a4ef" d="M1 11h9v9H1z"/>
